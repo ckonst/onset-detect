@@ -1,2 +1,2 @@
 # onset_detect
-an onset detector for time domain signals
+A package for musical onset detection functions.
