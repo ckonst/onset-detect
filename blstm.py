@@ -6,10 +6,8 @@ Programmed by Aladdin Persson <aladdin.persson at hotmail dot com>
 
 #%% Imports
 import torch
-import torchvision
 import torch.nn as nn  # All neural network modules, nn.Linear, nn.Conv2d, BatchNorm, Loss functions
 import torch.optim as optim  # For all Optimization algorithms, SGD, Adam, etc.
-import torch.nn.functional as F  # All functions that don't have any parameters
 from torch.utils.data import DataLoader # Gives easier dataset managment and creates mini batches
 import torchvision.datasets as datasets  # Has standard datasets we can import in a nice way
 import torchvision.transforms as transforms  # Transformations we can perform on our dataset
@@ -18,17 +16,15 @@ import torchvision.transforms as transforms  # Transformations we can perform on
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 #%% Hyperparameters
-input_size = 4096
+input_size = 1024
 hidden_size = 256
 num_layers = 3
-num_classes = 10
-
-sequence_length = 28
+num_classes = 2
 learning_rate = 0.001
-batch_size = 64
-num_epochs = 2
+batch_size = 128
+num_epochs = 10
 
-# Bidirectional LSTM
+#%% Bidirectional LSTM
 class BLSTM(nn.Module):
     def __init__(self, input_size, hidden_size, num_layers, num_classes):
         super(BLSTM, self).__init__()
@@ -40,10 +36,8 @@ class BLSTM(nn.Module):
     def forward(self, x):
         h0 = torch.zeros(self.num_layers * 2, x.size(0), self.hidden_size).to(device)
         c0 = torch.zeros(self.num_layers * 2, x.size(0), self.hidden_size).to(device)
-
         out, _ = self.lstm(x, (h0, c0))
         out = self.fc(out[:, -1, :])
-
         return out
 
 #%% Load Data
@@ -55,9 +49,6 @@ test_dataset = datasets.MNIST(
 
 train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
 test_loader = DataLoader(dataset=test_dataset, batch_size=batch_size, shuffle=True)
-
-
-
 
 #%% Initialize network
 model = BLSTM(input_size, hidden_size, num_layers, num_classes).to(device)
@@ -94,6 +85,7 @@ def check_accuracy(loader, model):
 
     num_correct = 0
     num_samples = 0
+    tolerance = 480
     model.eval()
 
     with torch.no_grad():
@@ -103,7 +95,7 @@ def check_accuracy(loader, model):
 
             scores = model(x)
             _, predictions = scores.max(1)
-            num_correct += (predictions == y).sum()
+            num_correct += (predictions <= y + tolerance or predictions >= y - tolerance).sum()
             num_samples += predictions.size(0)
 
         print(f"Got {num_correct} / {num_samples} with accuracy  \
