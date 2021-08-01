@@ -4,10 +4,13 @@ Created on Wed Jan 13 18:42:32 2021
 
 @author: Christian Konstantinov
 """
-import os
-import json
+
 from glob import glob
-import extract_features as ef
+import json
+import os
+
+from file_reading import file_to_ndarray
+from folder_iterator import iterate_folder
 
 DATA_PATH = './dataset/osu'
 RAW_PATH = f'{DATA_PATH}/raw'
@@ -16,16 +19,16 @@ EXTRACT_PATH = f'{DATA_PATH}/extracted'
 def write_json(name):
     OSU_X = 640 # max Osupixel x value
     OSU_Y = 480 # max Osupixel y value
-    MAP_PATH = f'{RAW_PATH}/{name}'
-    FOLDER_PATH = f'{DATA_PATH}/extracted/{name}'
-    JSON_FILE_PATH = f'{FOLDER_PATH}/beatmap.json'
+    map_path = f'{RAW_PATH}/{name}'
+    folder_path = f'{EXTRACT_PATH}/{name}'
+    json_file_path = f'{folder_path}/beatmap.json'
 
-    _, sig, _ = ef.file_to_ndarray(glob(f'{MAP_PATH}/*.mp3')[0], 'mp3')
+    _, sig, _ = file_to_ndarray(glob(f'{map_path}/*.mp3')[0], 'mp3')
 
     out_data = {'name': name,'onsets': [], 'xs': [], 'ys': []}
 
     # read the raw data
-    with open(glob(f'{MAP_PATH}/*.osu')[0], 'r', encoding='utf-8') as f:
+    with open(glob(f'{map_path}/*.osu')[0], 'r', encoding='utf-8') as f:
         flag = False
         for line in f:
             if flag:
@@ -38,19 +41,17 @@ def write_json(name):
                 flag = True
 
     # write to json
-    with open(JSON_FILE_PATH, 'w+') as f:
+    with open(json_file_path, 'w+') as f:
         json.dump(out_data, f)
 
 def extract():
     """Extract all the data from the osu folder."""
-    for folder in glob(f'{RAW_PATH}/*/'):
-        name = folder.split('raw\\')[1][:-1]
+    for name in iterate_folder(RAW_PATH):
         path = f'{EXTRACT_PATH}/{name}'
         if not os.path.exists(path):
             os.makedirs(path)
         write_json(name)
-
+        
 #%%
-
 if __name__ == '__main__':
     extract()

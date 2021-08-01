@@ -19,7 +19,7 @@ def get_lmfs(fs, input_sig, W, stride, fmin=20.0, fmax=20000.0):
 def superflux(fs, input_sig):
     """Return a vector of onset times for input_sig."""
     W = 1024
-    stride = int(lb.time_to_samples(1./100, sr=fs))
+    stride = int(lb.time_to_samples(0.01, sr=fs))
     lag = 2
     max_size = 3
     lmfs = get_lmfs(fs, input_sig, W, stride)
@@ -33,5 +33,3 @@ def superflux(fs, input_sig):
                                       hop_length=stride,
                                       units='time')
     return onset_sf
-
-#%%

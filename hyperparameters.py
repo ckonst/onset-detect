@@ -5,28 +5,52 @@ Created on Thu Jul 15 00:38:46 2021
 @author: Christian Konstantinov
 """
 
-from dataclasses import dataclass
-import pickle
+from abc import ABC
+from dataclasses import dataclass, asdict, replace
+from librosa import time_to_frames
+import json
 
 @dataclass
-class Hyperparameters:
-    """Class for storing hyperparameters and writing them to disk."""
+class HyperParameters(ABC):
+    """Abstract Base Class for storing and accessing hyperparameters."""
 
-    input_size: int = 1024
-    hidden_size: int = 256
-    num_layers: int = 3
+    def __post_init__(self):
+        if self.__class__ == HyperParameters:
+            raise TypeError("Cannot instantiate abstract class.")
+
+@dataclass
+class ML(HyperParameters):
+    """Dataclass for storing and accessing machine learning hyperparameters."""
+
+    input_size: int = 8
+    hidden_size: int = 16
+    num_layers: int = 2
     num_classes: int = 2
     learning_rate: float = 0.001
     batch_size: int = 128
     num_epochs: int = 10
+    num_workers: int = 8
 
-    def __init__(self, **kwargs):
-        self.__dict__.update(**kwargs)
+@dataclass
+class DSP(HyperParameters):
+    """A dataclass for storing and accessing signal processing hyperparameters."""
 
-    def save(self, file_path):
-        with open(file_path, 'wb+') as f:
-            pickle.dump(self.__dict__, f)
+    fs: int = 8000 # sample rate
+    W: int = 1024 # fft window size
+    stride: int = int(0.01*fs)
+    bands: int = 20 # number of frequency bins for the spectrogram
+    f_min: float = 20.0 # Humans cannot hear below 20 Hz
+    f_max: float = 0.5*fs # Nyquist frequency
+    context: int = time_to_frames(
+        [0.15], sr=fs, hop_length=stride, n_fft=W)[0] # tensor width in fft frames
 
-    def load(self, file_path):
-        with open(file_path, 'rb') as f:
-            self.__dict__.update(pickle.load(f))
+def save(h: HyperParameters, file_path: str) -> None:
+    """Given a file path, save the current Hyperparameters to a json file."""
+    with open(file_path, 'w+') as f:
+        json.dump(asdict(h), f)
+
+def load(file_path: str, h: HyperParameters) -> HyperParameters:
+    """Given a file path, load the Hyperparameters from file into the class."""
+    with open(file_path, 'r') as f:
+        h = replace(h, **json.load(f))
+    return h
