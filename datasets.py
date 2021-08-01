@@ -27,12 +27,12 @@ def measure(f):
 DATA_PATH = './dataset/osu'
 EXTRACT_PATH = f'{DATA_PATH}/extracted'
 
-def get_size(self) -> int:
+def get_size() -> int:
     """Get the total size of the dataset."""
     return sum([len(torch.load(f'{EXTRACT_PATH}/{name}/features.pt')[1])
         for name in iterate_folder(EXTRACT_PATH)])
 
-def get_index_table(self) -> Dict[int, Tuple[str, int]]:
+def get_index_table() -> Dict[int, Tuple[str, int]]:
     """Create a mapping from Dataset index (int) to name (str) and context frame index (int)."""
     index_table = {}
     dataset_index = 0
@@ -48,19 +48,16 @@ class OnsetDataset(Dataset):
 
     def __init__(self, **kwargs):
         """Useful docstring goes here."""
-
         self.__dict__.update(**kwargs)
         self._size = get_size()
         self.index_table = get_index_table()
 
     def __len__(self) -> int:
         """Useful docstring goes here."""
-
         return self._size
 
     def __getitem__(self, index: int) -> torch.Tensor:
         """Useful docstring goes here."""
-        
         name, frame = self.index_table[index]
         tensor, indices = torch.load(f'{EXTRACT_PATH}/{name}/features.pt')
         targets = torch.load(f'{EXTRACT_PATH}/{name}/targets.pt')

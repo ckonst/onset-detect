@@ -5,9 +5,9 @@ def file_to_ndarray(file_path: str, file_type: str) -> (int, np.ndarray, AudioSe
     """
     Extract an ndarray from file.
 
-    Given a path to a file, and its type (extension without '.'), 
-    return a tuple conataining the sample rate, 
-    an nd numpy array containing PCM audio data, 
+    Given a path to a file, and its type (extension without '.'),
+    return a tuple conataining the sample rate,
+    an nd numpy array containing PCM audio data,
     and an AudioSegment in audio_seg.
     """
     audio_seg = AudioSegment.from_file(file_path, file_type)

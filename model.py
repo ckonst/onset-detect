@@ -11,7 +11,6 @@ class OnsetDetector(nn.Module):
 
     def __init__(self, **kwargs):
         """Useful docstring goes here."""
-        
         super(OnsetDetector, self).__init__()
         self.__dict__.update(**kwargs)
         self.relu = nn.ReLU()
