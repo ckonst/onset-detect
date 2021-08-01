@@ -73,15 +73,12 @@ class CoordinateDataset(Dataset):
 
     def __init__(self, **kwargs):
         """Useful docstring goes here."""
-
         self.__dict__.update(kwargs)
 
     def __len__(self):
         """Useful docstring goes here."""
-
         pass
 
     def __getitem__(self, index):
         """Useful docstring goes here."""
-
         pass
