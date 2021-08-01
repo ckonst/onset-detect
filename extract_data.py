@@ -23,8 +23,6 @@ def write_json(name):
     folder_path = f'{EXTRACT_PATH}/{name}'
     json_file_path = f'{folder_path}/beatmap.json'
 
-    _, sig, _ = file_to_ndarray(glob(f'{map_path}/*.mp3')[0], 'mp3')
-
     out_data = {'name': name,'onsets': [], 'xs': [], 'ys': []}
 
     # read the raw data
@@ -51,7 +49,6 @@ def extract():
         if not os.path.exists(path):
             os.makedirs(path)
         write_json(name)
-        
 #%%
 if __name__ == '__main__':
     extract()

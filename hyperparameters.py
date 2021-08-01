@@ -15,6 +15,7 @@ class HyperParameters(ABC):
     """Abstract Base Class for storing and accessing hyperparameters."""
 
     def __post_init__(self):
+        """Make sure that the abstract class is never instantiated."""
         if self.__class__ == HyperParameters:
             raise TypeError("Cannot instantiate abstract class.")
 

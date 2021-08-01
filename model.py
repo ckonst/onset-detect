@@ -7,8 +7,11 @@ from datasets import OnsetDataset
 from hyperparameters import ML
 
 class OnsetDetector(nn.Module):
+    """Onset detection model for automatic rhythm game mapping."""
 
     def __init__(self, **kwargs):
+        """Useful docstring goes here."""
+        
         super(OnsetDetector, self).__init__()
         self.__dict__.update(**kwargs)
         self.relu = nn.ReLU()

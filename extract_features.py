@@ -89,7 +89,7 @@ def pad_tensor(unpadded: torch.Tensor, size: int, W: int) -> torch.Tensor:
     return pad_sig
 
 def normalize(tensor: torch.Tensor) -> torch.Tensor:
-    """Return the tensor normalized to the interval [-1, 1] where μ = 0, σ² = 1"""
+    """Return the tensor normalized to the interval [-1, 1] where μ = 0, σ² = 1."""
     minus_mean = tensor - tensor.float().mean()
     return minus_mean / minus_mean.abs().max()
 
