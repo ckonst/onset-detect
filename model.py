@@ -4,8 +4,9 @@ from torch import optim
 from torch.utils.data import DataLoader
 
 from datasets import OnsetDataset
-from hyperparameters import ML
+from hyperparameters import ML, DSP
 
+# TODO: Maxpooling ?
 class OnsetDetector(nn.Module):
     """Onset detection model for automatic rhythm game mapping."""
 
@@ -56,19 +57,20 @@ def train(train_data, model, loss_fn, optimizer, ml):
         validate(train_data, model, loss_fn, optimizer, ml)
 
 # TODO: implement testing
-def test(train_data, model, loss_fn, optimizer, ml):
+def test(test_data, model, loss_fn, optimizer, ml):
     pass
 
 # TODO: implement validation
-def validate(train_data, model, loss_fn, optimizer, ml):
+def validate(validation_data, model, loss_fn, optimizer, ml):
     pass
 
-def check_accuracy(loader, model):
+# TODO: implement inference
+def infer(input_data, model):
+    pass
+
+def check_accuracy(loader, model, tolerance, dataset='train'):
     """Check accuracy on training & test to see how good our model is."""
-    if loader.dataset.train:
-        print("Checking accuracy on training data")
-    else:
-        print("Checking accuracy on test data")
+    print(f'checking accuracy on the {dataset} set')
 
     num_correct = 0
     num_samples = 0
@@ -76,11 +78,12 @@ def check_accuracy(loader, model):
     model.eval()
 
     with torch.no_grad():
-        for x, y in loader:
-            x = x.to(device=model.device).squeeze(1)
-            y = y.to(device=model.device)
+        for (spectrogram, indices), y in loader:
+            spectrogram = spectrogram.to(model.device)
+            indices = indices.to(model.device)
+            y = y.to(model.device)
 
-            scores = model(x)
+            scores = model((spectrogram, indices))
             _, predictions = scores.max(1)
             num_correct += (predictions <= y + tolerance or predictions >= y - tolerance).sum()
             num_samples += predictions.size(0)
@@ -93,15 +96,15 @@ def check_accuracy(loader, model):
 def main():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     ml = ML()
-    dataset = OnsetDataset(**ml.__dict__)
-    train_data = DataLoader(dataset, batch_size=ml.batch_size,
+    train_data = OnsetDataset(**ml.__dict__)
+    train_loader = DataLoader(train_data, batch_size=ml.batch_size,
                                      num_workers=ml.num_workers)
     model = OnsetDetector(**ml.__dict__, device=device).to(device)
     loss_fn = nn.BCELoss()
     optimizer = optim.Adam(model.parameters(), lr=ml.learning_rate)
 
-    train(train_data, model, loss_fn, optimizer, ml)
-    test(train_data, model, loss_fn, optimizer, ml)
+    train(train_loader, model, loss_fn, optimizer, ml)
+    test(train_loader, model, loss_fn, optimizer, ml)
 
 if __name__ == '__main__':
     main()

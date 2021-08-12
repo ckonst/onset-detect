@@ -20,19 +20,6 @@ class HyperParameters(ABC):
             raise TypeError("Cannot instantiate abstract class.")
 
 @dataclass
-class ML(HyperParameters):
-    """Dataclass for storing and accessing machine learning hyperparameters."""
-
-    input_size: int = 8
-    hidden_size: int = 16
-    num_layers: int = 2
-    num_classes: int = 2
-    learning_rate: float = 0.001
-    batch_size: int = 128
-    num_epochs: int = 10
-    num_workers: int = 8
-
-@dataclass
 class DSP(HyperParameters):
     """A dataclass for storing and accessing signal processing hyperparameters."""
 
@@ -44,6 +31,21 @@ class DSP(HyperParameters):
     f_max: float = 0.5*fs # Nyquist frequency
     context: int = time_to_frames(
         [0.15], sr=fs, hop_length=stride, n_fft=W)[0] # tensor width in fft frames
+    tolerance: float = 0.01 # margin of error in seconds
+
+@dataclass
+class ML(HyperParameters):
+    """Dataclass for storing and accessing machine learning hyperparameters."""
+
+    input_size: int = DSP.context # a bit wonky, but this ensures generality
+    hidden_size: int = 16
+    num_layers: int = 2
+    num_classes: int = 2
+    learning_rate: float = 0.001
+    batch_size: int = 128
+    num_epochs: int = 10
+    num_workers: int = 8
+    patience: int = 6
 
 def save(h: HyperParameters, file_path: str) -> None:
     """Given a file path, save the current Hyperparameters to a json file."""

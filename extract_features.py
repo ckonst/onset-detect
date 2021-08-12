@@ -7,12 +7,11 @@ Created on Thu Jan 14 14:35:39 2021
 
 from glob import glob
 import json
-from librosa import time_to_frames, resample
-import numpy as np
+from librosa import load, time_to_frames
+
 import torch
 from torchaudio import transforms
 
-from file_reading import file_to_ndarray
 from folder_iterator import iterate_folder
 from hyperparameters import DSP
 
@@ -34,7 +33,6 @@ def measure(f):
     return wrapper
 
 # TODO: Move extraction to dataset for easy parallelization?
-# TODO: Get rid of librosa imports
 
 @measure
 def extract() -> None:
@@ -68,11 +66,8 @@ def get_lmfs(name: str, dsp: DSP) -> torch.Tensor:
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     map_path = f'{RAW_PATH}/{name}'
 
-    fs, stereo_sig, _ = file_to_ndarray(glob(f'{map_path}/*.mp3')[0], 'mp3')
-    stereo_sig = stereo_sig.astype(np.float32)
-    stereo_sig = resample(stereo_sig.T, fs, dsp.fs, res_type='kaiser_fast', fix=True)
-    stereo_sig = torch.from_numpy(stereo_sig).to(device)
-    mono_sig = torch.mean(stereo_sig, dim=0, keepdim=True)
+    mono_sig, fs = load(glob(f'{map_path}/*.mp3')[0], sr=dsp.fs, res_type='kaiser_fast')
+    mono_sig = torch.from_numpy(mono_sig).to(device)
     norm_sig = normalize(mono_sig)
 
     mfs = transforms.MelSpectrogram(sample_rate=fs, n_fft=dsp.W,
@@ -80,7 +75,7 @@ def get_lmfs(name: str, dsp: DSP) -> torch.Tensor:
                                     n_mels=dsp.bands, hop_length=dsp.stride,
                                     window_fn=torch.hamming_window).to(device)(norm_sig)
 
-    lmfs = transforms.AmplitudeToDB().to(device)(mfs)
+    lmfs = transforms.AmplitudeToDB().to(device)(mfs).unsqueeze(0)
     return lmfs
 
 def pad_tensor(unpadded: torch.Tensor, size: int, W: int) -> torch.Tensor:

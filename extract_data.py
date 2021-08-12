@@ -9,7 +9,6 @@ from glob import glob
 import json
 import os
 
-from file_reading import file_to_ndarray
 from folder_iterator import iterate_folder
 
 DATA_PATH = './dataset/osu'
