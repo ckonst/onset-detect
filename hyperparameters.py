@@ -7,11 +7,11 @@ Created on Thu Jul 15 00:38:46 2021
 
 from abc import ABC
 from dataclasses import dataclass, asdict, replace
-from librosa import time_to_frames
 import json
 
 @dataclass
 class HyperParameters(ABC):
+
     """Abstract Base Class for storing and accessing hyperparameters."""
 
     def __post_init__(self):
@@ -21,29 +21,31 @@ class HyperParameters(ABC):
 
 @dataclass
 class DSP(HyperParameters):
+
     """A dataclass for storing and accessing signal processing hyperparameters."""
 
     fs: int = 8000 # sample rate
     W: int = 1024 # fft window size
-    stride: int = int(0.01*fs)
+    stride: int = int(0.01 * fs)
     bands: int = 20 # number of frequency bins for the spectrogram
     f_min: float = 20.0 # Humans cannot hear below 20 Hz
-    f_max: float = 0.5*fs # Nyquist frequency
-    context: int = time_to_frames(
-        [0.15], sr=fs, hop_length=stride, n_fft=W)[0] # tensor width in fft frames
-    tolerance: float = 0.01 # margin of error in seconds
+    f_max: float = 0.5 * fs # Nyquist frequency
+    context: int = int(0.15 * fs / stride) # tensor width in fft frames
+    tolerance: int = int(0.01 * fs / stride) # margin of error in fft frames
 
 @dataclass
 class ML(HyperParameters):
+
     """Dataclass for storing and accessing machine learning hyperparameters."""
 
-    input_size: int = DSP.context # a bit wonky, but this ensures generality
+    input_size: int = DSP.context # a bit wonky, but it works
+    sequence_length: int = DSP.bands
     hidden_size: int = 16
     num_layers: int = 2
     num_classes: int = 2
     learning_rate: float = 0.001
     batch_size: int = 128
-    num_epochs: int = 10
+    num_epochs: int = 50
     num_workers: int = 8
     patience: int = 6
 

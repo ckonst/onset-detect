@@ -44,6 +44,7 @@ def get_index_table() -> Dict[int, Tuple[str, int]]:
     return index_table
 
 class OnsetDataset(Dataset):
+
     """Dataset class for mapping spectrogram frames to onset classes."""
 
     def __init__(self, **kwargs):
@@ -68,6 +69,7 @@ class OnsetDataset(Dataset):
         return ((tensor[:, :, start:end], frame), targets[start:end])
 
 class CoordinateDataset(Dataset):
+
     """Dataset class for mapping Onset times to x, y coordinates."""
     # TODO: Finish implementing this class
 

@@ -30,9 +30,9 @@ def write_json(name):
         for line in f:
             if flag:
                 data = line.split(',')
-                out_data['onsets'].append(int(data[2])/1000)
-                out_data['xs'].append(int(data[0])/OSU_X)
-                out_data['ys'].append(int(data[1])/OSU_Y)
+                out_data['onsets'].append(int(data[2]) / 1000)
+                out_data['xs'].append(int(data[0]) / OSU_X)
+                out_data['ys'].append(int(data[1]) / OSU_Y)
                 continue
             if '[HitObjects]' in line:
                 flag = True

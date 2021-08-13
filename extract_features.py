@@ -55,7 +55,7 @@ def extract_features(name: str, dsp: DSP) -> torch.Tensor:
 def create_onset_labels(features: torch.Tensor, song_path: str, dsp: DSP):
     with open(f'{song_path}/beatmap.json', 'r') as f:
         beatmap = json.load(f)
-    onsets = time_to_frames(beatmap['onsets'], sr=dsp.fs, hop_length=dsp.stride, n_fft=dsp.W)
+    onsets = time_to_frames(beatmap['onsets'], sr=dsp.fs, hop_length=dsp.stride)
     targets = torch.zeros(features.shape[2])
     for o in onsets:
         targets[o] = 1
