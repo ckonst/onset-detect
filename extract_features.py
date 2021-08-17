@@ -11,9 +11,10 @@ from librosa import load, time_to_frames
 
 import torch
 from torchaudio import transforms
+from torch.multiprocessing import Pool
 
 from folder_iterator import iterate_folder
-from hyperparameters import DSP
+from hyperparameters import DSP, ML
 
 DATA_PATH = './dataset/osu'
 RAW_PATH = f'{DATA_PATH}/raw'
@@ -32,18 +33,21 @@ def measure(f):
         return result
     return wrapper
 
-# TODO: Move extraction to dataset for easy parallelization?
-
 @measure
 def extract() -> None:
-    """Extract all the data from the osu folder."""
+    """Create processes to parallelize feature extraction."""
+    inputs = [name for name in iterate_folder(RAW_PATH)]
+    with Pool(ML().num_workers) as p:
+        p.map(process_song, inputs)
+
+def process_song(name):
+    """Extract features from a given song name, then save them to the new folder."""
+    song_path = f'{EXTRACT_PATH}/{name}'
     dsp = DSP()
-    for name in iterate_folder(RAW_PATH):
-        song_path = f'{EXTRACT_PATH}/{name}'
-        tensor, indices = extract_features(name, dsp)
-        targets = create_onset_labels(tensor, song_path, dsp)
-        torch.save((tensor, indices), f'{song_path}/features.pt')
-        torch.save(targets, f'{song_path}/targets.pt')
+    tensor, indices = extract_features(name, dsp)
+    targets = create_onset_labels(tensor, song_path, dsp)
+    torch.save((tensor, indices), f'{song_path}/features.pt')
+    torch.save(targets, f'{song_path}/targets.pt')
 
 def extract_features(name: str, dsp: DSP) -> torch.Tensor:
     """Extract the spectrogams and tensor indices for the dataset."""
@@ -63,7 +67,8 @@ def create_onset_labels(features: torch.Tensor, song_path: str, dsp: DSP):
 
 def get_lmfs(name: str, dsp: DSP) -> torch.Tensor:
     """Return the log mel frequency spectrogram."""
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    #device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cpu')
     map_path = f'{RAW_PATH}/{name}'
 
     mono_sig, fs = load(glob(f'{map_path}/*.mp3')[0], sr=dsp.fs, res_type='kaiser_fast')

@@ -8,7 +8,8 @@ Created on Thu Aug 12 20:16:53 2021
 import torch
 from torch import nn
 
-# TODO: Maxpooling ?
+# TODO: Maxpooling
+# FIXME: Slow training time
 class OnsetDetector(nn.Module):
 
     """Onset detection model for automatic rhythm game mapping."""
@@ -33,6 +34,7 @@ class OnsetDetector(nn.Module):
         x0 = self.relu(self.bn(self.conv(x0)))
         x0 = self.relu(self.bn(self.conv(x0)))
         x0 = x0.squeeze(1)
+        x0 = torch.transpose(x0, 1, 2)
         h0 = torch.zeros(self.num_layers * self.D, x0.size(0), self.hidden_size).to(self.device)
         c0 = torch.zeros(self.num_layers * self.D, x0.size(0), self.hidden_size).to(self.device)
         x0, _ = self.lstm(x0, (h0, c0))

@@ -26,17 +26,17 @@ def test(test_data, model, loss_fn, optimizer, ml):
     pass
 
 # TODO: implement validation
-def validate(validation_data, model, loss_fn, optimizer, ml):
+def validate(validation_data, model, loss_fn, optimizer):
     pass
 
 # TODO: implement inference
 def infer(input_data, model):
     pass
 
-def check_accuracy(loader, model, tolerance, dataset='test'):
+def evaluate(loader, model, dataset='test'):
     """Check accuracy on training & test to see how good our model is."""
 
-    print(f'checking accuracy on the {dataset} set')
+    print(f'evaluating the {dataset} set')
 
     results = {'T+': 0, 'F+': 0, 'T-': 0, 'F-': 0}
     tolerance = loader.dataset.dsp.tolerance
@@ -59,7 +59,8 @@ def check_accuracy(loader, model, tolerance, dataset='test'):
     model.train()
 
 def main():
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    #device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cpu')
     ml = ML()
     dsp = DSP()
     train_data = OnsetDataset(ml=ml, dsp=dsp)
