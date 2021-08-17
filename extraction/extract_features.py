@@ -13,10 +13,10 @@ import torch
 from torchaudio import transforms
 from torch.multiprocessing import Pool
 
-from folder_iterator import iterate_folder
-from hyperparameters import DSP, ML
+from file_reading.folder_iterator import iterate_folder
+from model.hyperparameters import DSP, ML
 
-DATA_PATH = './dataset/osu'
+DATA_PATH = '../dataset/osu'
 RAW_PATH = f'{DATA_PATH}/raw'
 EXTRACT_PATH = f'{DATA_PATH}/extracted'
 

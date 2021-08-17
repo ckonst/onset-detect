@@ -8,7 +8,7 @@ Created on Tue Jan 19 22:29:13 2021
 import torch
 from torch.utils.data import Dataset
 
-from folder_iterator import iterate_folder
+from file_reading.folder_iterator import iterate_folder
 
 from functools import wraps
 from time import time

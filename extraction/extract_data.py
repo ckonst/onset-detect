@@ -9,9 +9,9 @@ from glob import glob
 import json
 import os
 
-from folder_iterator import iterate_folder
+from file_reading.folder_iterator import iterate_folder
 
-DATA_PATH = './dataset/osu'
+DATA_PATH = '../dataset/osu'
 RAW_PATH = f'{DATA_PATH}/raw'
 EXTRACT_PATH = f'{DATA_PATH}/extracted'
 
