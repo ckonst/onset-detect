@@ -41,13 +41,13 @@ class ML(HyperParameters):
 
     input_size: int = DSP.bands # a bit wonky, but it works
     sequence_length: int = DSP.context
-    hidden_size: int = 16
-    num_layers: int = 2
+    hidden_size: int = 4
+    num_layers: int = 1
     num_classes: int = 2
     learning_rate: float = 0.001
-    batch_size: int = 128
+    batch_size: int = 64
     num_epochs: int = 50
-    num_workers: int = max(cpu_count() // 2, 1)
+    num_workers: int = max(cpu_count() // 4, 0)
     patience: int = 6
 
 def save(h: HyperParameters, file_path: str) -> None:
@@ -55,7 +55,7 @@ def save(h: HyperParameters, file_path: str) -> None:
     with open(file_path, 'w+') as f:
         json.dump(asdict(h), f)
 
-def load(file_path: str, h: HyperParameters) -> HyperParameters:
+def load(h: HyperParameters, file_path: str) -> HyperParameters:
     """Given a file path, load the Hyperparameters from file into the class."""
     with open(file_path, 'r') as f:
         h = replace(h, **json.load(f))

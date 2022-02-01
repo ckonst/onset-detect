@@ -37,10 +37,11 @@ def measure(f):
 def extract() -> None:
     """Create processes to parallelize feature extraction."""
     inputs = [name for name in iterate_folder(RAW_PATH)]
-    with Pool(ML().num_workers) as p:
+    ml = ML()
+    with Pool(ml.num_workers) as p:
         p.map(process_song, inputs)
 
-def process_song(name):
+def process_song(name: str) -> None:
     """Extract features from a given song name, then save them to the new folder."""
     song_path = f'{EXTRACT_PATH}/{name}'
     dsp = DSP()
@@ -56,7 +57,7 @@ def extract_features(name: str, dsp: DSP) -> torch.Tensor:
     indices = list(range(0, tensor.shape[-1] // dsp.context))
     return tensor, indices
 
-def create_onset_labels(features: torch.Tensor, song_path: str, dsp: DSP):
+def create_onset_labels(features: torch.Tensor, song_path: str, dsp: DSP) -> torch.Tensor:
     with open(f'{song_path}/beatmap.json', 'r') as f:
         beatmap = json.load(f)
     onsets = time_to_frames(beatmap['onsets'], sr=dsp.fs, hop_length=dsp.stride)
@@ -67,20 +68,17 @@ def create_onset_labels(features: torch.Tensor, song_path: str, dsp: DSP):
 
 def get_lmfs(name: str, dsp: DSP) -> torch.Tensor:
     """Return the log mel frequency spectrogram."""
-    #device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    device = torch.device('cpu')
     map_path = f'{RAW_PATH}/{name}'
-
     mono_sig, fs = load(glob(f'{map_path}/*.mp3')[0], sr=dsp.fs, res_type='kaiser_fast')
-    mono_sig = torch.from_numpy(mono_sig).to(device)
+    mono_sig = torch.from_numpy(mono_sig)
     norm_sig = normalize(mono_sig)
 
     mfs = transforms.MelSpectrogram(sample_rate=fs, n_fft=dsp.W,
                                     f_min=dsp.f_min, f_max=dsp.f_max,
                                     n_mels=dsp.bands, hop_length=dsp.stride,
-                                    window_fn=torch.hamming_window).to(device)(norm_sig)
+                                    window_fn=torch.hamming_window)(norm_sig)
 
-    lmfs = transforms.AmplitudeToDB().to(device)(mfs).unsqueeze(0)
+    lmfs = transforms.AmplitudeToDB()(mfs).unsqueeze(0).half().detach()
     return lmfs
 
 def pad_tensor(unpadded: torch.Tensor, size: int, W: int) -> torch.Tensor:

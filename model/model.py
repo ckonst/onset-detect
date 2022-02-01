@@ -9,6 +9,8 @@ import torch
 from torch import nn
 
 # TODO: Maxpooling
+# TODO: 2 Models, or 1 end-to-end Model?
+# TODO: maybe move train, test, and validate to this class?
 # FIXME: Slow training time
 class OnsetDetector(nn.Module):
 
@@ -23,14 +25,19 @@ class OnsetDetector(nn.Module):
         self.conv = nn.Conv2d(1, 1, kernel_size=(3, 3), padding='same')
         self.bidirectional = True
         self.D = 2 if self.bidirectional else 1
-        self.lstm = nn.LSTM(self.input_size, self.hidden_size,
-        self.num_layers, batch_first=True, bidirectional=self.bidirectional)
-        self.fc = nn.Linear((self.sequence_length * self.D * self.hidden_size) + 1, self.input_size)
+        self.lstm = nn.LSTM(input_size=self.input_size, hidden_size=self.hidden_size,
+                            num_layers=self.num_layers, batch_first=True,
+                            bidirectional=self.bidirectional)
+        self.fc = nn.Linear((self.sequence_length * self.D * self.hidden_size) + 1, self.sequence_length)
         self.dropout = nn.Dropout()
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
         x0, x1 = x
+        x0 = self.relu(self.bn(self.conv(x0)))
+        x0 = self.relu(self.bn(self.conv(x0)))
+        x0 = self.relu(self.bn(self.conv(x0)))
+        x0 = self.relu(self.bn(self.conv(x0)))
         x0 = self.relu(self.bn(self.conv(x0)))
         x0 = self.relu(self.bn(self.conv(x0)))
         x0 = x0.squeeze(1)
@@ -42,5 +49,4 @@ class OnsetDetector(nn.Module):
         x = torch.cat((x0.flatten(start_dim=1), x1), dim=1)
         x = self.fc(x)
         x = self.dropout(x)
-        x = self.sigmoid(x)
         return x

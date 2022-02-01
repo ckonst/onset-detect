@@ -16,6 +16,8 @@ RAW_PATH = f'{DATA_PATH}/raw'
 EXTRACT_PATH = f'{DATA_PATH}/extracted'
 
 def write_json(name):
+    # Constants defined by the .osu file format
+    # https://osu.ppy.sh/wiki/en/Client/File_formats/Osu_%28file_format%29
     OSU_X = 640 # max Osupixel x value
     OSU_Y = 480 # max Osupixel y value
     map_path = f'{RAW_PATH}/{name}'
@@ -26,16 +28,26 @@ def write_json(name):
 
     # read the raw data
     with open(glob(f'{map_path}/*.osu')[0], 'r', encoding='utf-8') as f:
-        flag = False
+        hit_objects_flag = False
+        timing_points_flag = False
         for line in f:
-            if flag:
+            if timing_points_flag:
+                continue
+            if hit_objects_flag:
                 data = line.split(',')
-                out_data['onsets'].append(int(data[2]) / 1000)
+                onset = int(data[2]) / 1000
+                out_data['onsets'].append(onset)
+                #if len(data) > 5 and data[5][0].isalpha():
+                #    out_data['onsets'] += [onset + i * float(data[7]) for i in range(1, int(data[6]) + 1)]
                 out_data['xs'].append(int(data[0]) / OSU_X)
                 out_data['ys'].append(int(data[1]) / OSU_Y)
                 continue
             if '[HitObjects]' in line:
-                flag = True
+                hit_objects_flag = True
+                timing_points_flag = False
+            elif '[TimingPoints]':
+                timing_points_flag = True
+                # TODO: use timing points to determine slider speeds
 
     # write to json
     with open(json_file_path, 'w+') as f:
