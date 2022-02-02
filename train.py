@@ -7,9 +7,13 @@ from dataset.dataset import OnsetDataset
 from model.hyperparameters import ML, DSP
 from model.model import OnsetDetector
 
-from itertools import starmap
 from functools import wraps
 from time import time
+
+from librosa import frames_to_time
+from librosa.util import peak_pick
+from mir_eval.onset import f_measure
+import numpy as np
 
 def measure(f):
     @wraps(f)
@@ -22,8 +26,9 @@ def measure(f):
     return wrapper
 
 def train(train_data, validation_data, model, loss_fn, optimizer, ml):
+    print('Started training...')
     for epoch in range(ml.num_epochs):
-        for (spectrogram, indices), targets in train_data:
+        for i, ((spectrogram, indices), targets) in enumerate(train_data):
             spectrogram = spectrogram.to(model.device)
             indices = indices.to(model.device)
             targets = targets.to(model.device)
@@ -33,63 +38,116 @@ def train(train_data, validation_data, model, loss_fn, optimizer, ml):
             loss.backward()
             optimizer.step()
         print(f'epoch {epoch} loss: {loss}')
-        validate(validation_data, model, loss_fn, optimizer, ml)
 
-# TODO: implement validation
+        if validate(validation_data, model, loss_fn, optimizer, ml):
+            continue
+        else:
+            print(f'Patience Exceeded! ({model.ml.patience} epochs with no f-score improvement). Stopping Early.')
+            break
+
+#TODO: save the best model to the disk.
 def validate(validation_data, model, loss_fn, optimizer, ml):
-    pass
+    """
+    Validate the data to make sure the model is learning properly.
+    If it is not learning (e.g. vanishing gradient or convergence) return False to indicate that training should stop.
 
-# TODO: implement testing
-def test(test_data, model, loss_fn, optimizer):
-    pass
+    Parameters
+    ----------
+    validation_data : torch.utils.data.Dataloader
+        The Dataloader for the validation data.
+    model : nn.Module
+        The model to validate.
+    loss_fn : nn.BCEWithLogitsLoss
+        The loss function for onset detection.
+    optimizer : optim.Adam
+        The optimizer for onset detection.
+    ml : Hyperparameters
+        The machine learning hyperparameters.
 
-# TODO: implement inference
-def infer(input_data, model):
-    pass
+    Returns
+    -------
+    bool
+        Whether or not training should continue.
 
-def evaluate(self, loader, model, dataset='test'):
+    """
+    fscore, precision, recall = evaluate(validation_data, model, dataset='dev')
+
+    if fscore > model.hi_score:
+        model.hi_score = fscore
+        model.no_improve = 0
+    else:
+        model.no_improve += 1
+
+    if model.no_improve > model.patience:
+        return False
+    return True
+
+def evaluate(loader, model, dataset='test'):
     """Check accuracy on training & test to see how good our model is."""
 
     print(f'evaluating the {dataset} set')
 
     tolerance = loader.dataset.dataset.dsp.tolerance
+    fs = loader.dataset.dataset.dsp.fs
+    stride = loader.dataset.dataset.dsp.stride
 
     model.eval()
 
+    fscore, precision, recall = (0., 0., 0.)
     with torch.no_grad():
         for (spectrogram, indices), targets in loader:
             spectrogram = spectrogram.to(model.device)
             indices = indices.to(model.device)
             targets = targets.to(model.device)
             predictions = model((spectrogram, indices))
-            evaluate_batch(predictions, targets, tolerance)
+            f, p, r = evaluate_batch(predictions, targets, tolerance, fs, stride)
+            fscore += f
+            precision += p
+            recall += r
 
-    '''
-        print(f"Got {num_correct} / {num_samples} with accuracy  \
-              {float(num_correct)/float(num_samples)*100:.2f}")
-    '''
+    fscore /= len(dataset)
+    precision /= len(dataset)
+    recall /= len(dataset)
+
+    print(f"F-score: {fscore}\n\
+          precision: {precision}\n\
+             recall: {recall}")
 
     model.train()
 
-def evaluate_batch(predictions, targets, tolerance):
-    for i, p, t in enumerate(zip(predictions, targets)):
-        print(evaluate_frame(p, t, tolerance))
+    return fscore, precision, recall
 
-def evaluate_frame(predictions, targets, tolerance):
-    predictions = list(predictions)
-    targets = list(targets)
-    results = [0]*len(targets)
-    r = {2: 0, 1: 0, -2: 0, -1: 0}
-    for i in range(len(targets)):
-        results[i] = sum(list(starmap(
-            lambda x, y: x + y,
-            zip(predictions[i-tolerance:i+tolerance],
-                    targets[i-tolerance:i+tolerance]))))
-        if results[i] == 0:
-            predictions[i] = 0
-            targets[i] = 0
-        elif results[i]: pass
-    return r
+def evaluate_batch(predictions, targets, tolerance, fs, stride):
+    fscore, precision, recall = (0., 0., 0.)
+    for p, t in zip(predictions, targets):
+        f1, pr, re = evaluate_frame(p, t, tolerance, fs, stride)
+        fscore += f1
+        precision += pr
+        recall += re
+    return fscore, precision, recall
+
+
+def evaluate_frame(predictions, targets, tolerance, fs, stride):
+    p = predictions.cpu().detach().numpy()
+    p = peak_pick(p, 7, 7, 7, 7, 0.5, 5)
+    p,= np.nonzero(p)
+    p = frames_to_time(p, fs, stride)
+
+    t = targets.cpu().detach().numpy()
+    t = peak_pick(t, 7, 7, 7, 7, 0.5, 5)
+    t,= np.nonzero(t)
+    t = frames_to_time(t, fs, stride)
+
+    return f_measure(t, p, tolerance)
+
+# TODO: implement testing
+def test(test_data, model, loss_fn, optimizer, ml):
+    pass
+
+# TODO: implement inference
+def infer(input_data, model):
+    pass
+
 
 def main():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')

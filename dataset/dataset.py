@@ -28,6 +28,48 @@ def measure(f):
 DATA_PATH = '../dataset/osu' if __name__ == '__main__' else './dataset/osu'
 EXTRACT_PATH = f'{DATA_PATH}/extracted'
 
+def _get_index_to_context() -> Tuple[Dict[int, Tuple[str, int]]]:
+    """Create a mapping from Dataset index (int) to name (str) and context frame index (int)."""
+    index_to_context = {}
+    dataset_index = 0
+    for name in iterate_folder(EXTRACT_PATH):
+        _, frame_indices = torch.load(f'{EXTRACT_PATH}/{name}/features.pt')
+        for i in frame_indices:
+            index_to_context[dataset_index + i] = (name, i)
+        dataset_index += len(frame_indices)
+    return index_to_context
+
+def _get_name_to_index() -> Dict[str, Tuple[int, int]]:
+    name_to_index = {}
+    dataset_index = 0
+    for name in iterate_folder(EXTRACT_PATH):
+        _, frame_indices = torch.load(f'{EXTRACT_PATH}/{name}/features.pt')
+        for _ in frame_indices:
+            name_to_index[name] = (dataset_index, dataset_index + len(frame_indices))
+        dataset_index += len(frame_indices)
+    return name_to_index
+
+def _get_song_index_to_range(seed: int = 0) -> Dict[int, Tuple[int, int]]:
+    song_index_to_range = {}
+    dataset_index = 0
+    songs = [name for name in iterate_folder(EXTRACT_PATH)]
+    random.seed(seed)
+    random.shuffle(songs)
+    for i, name in enumerate(songs):
+        _, frame_indices = torch.load(f'{EXTRACT_PATH}/{name}/features.pt')
+        song_index_to_range[i] = dataset_index, dataset_index + len(frame_indices) - 1
+        dataset_index += len(frame_indices)
+    return song_index_to_range
+
+def _get_size() -> int:
+    """Get the total size of the dataset."""
+    return sum([len(torch.load(f'{EXTRACT_PATH}/{name}/features.pt')[1])
+        for name in iterate_folder(EXTRACT_PATH)])
+
+def _get_num_songs() -> int:
+    """Get the number of songs in the dataset."""
+    return len([0 for name in iterate_folder(EXTRACT_PATH)])
+
 class OnsetDataset(Dataset):
 
     """Dataset class for mapping spectrogram frames to onset classes."""
@@ -35,10 +77,10 @@ class OnsetDataset(Dataset):
     def __init__(self, **kwargs):
         """Useful docstring goes here."""
         self.__dict__.update(**kwargs)
-        self.num_songs = self.get_num_songs()
-        self._size = self.get_size()
-        self.index_to_context  = self.get_index_to_context()
-        self.name_to_index = self.get_name_to_index()
+        self.num_songs = _get_num_songs()
+        self._size = _get_size()
+        self.index_to_context  = _get_index_to_context()
+        self.name_to_index = _get_name_to_index()
 
     def __len__(self) -> int:
         """Useful docstring goes here."""
@@ -54,48 +96,6 @@ class OnsetDataset(Dataset):
         end = (frame + 1) * context
         frame = torch.HalfTensor([frame])
         return ((tensor[:, :, start:end], frame), targets[start:end])
-
-    def get_index_to_context(self) -> Tuple[Dict[int, Tuple[str, int]]]:
-        """Create a mapping from Dataset index (int) to name (str) and context frame index (int)."""
-        index_to_context = {}
-        dataset_index = 0
-        for name in iterate_folder(EXTRACT_PATH):
-            _, frame_indices = torch.load(f'{EXTRACT_PATH}/{name}/features.pt')
-            for i in frame_indices:
-                index_to_context[dataset_index + i] = (name, i)
-            dataset_index += len(frame_indices)
-        return index_to_context
-
-    def get_name_to_index(self) -> Dict[str, Tuple[int, int]]:
-        name_to_index = {}
-        dataset_index = 0
-        for name in iterate_folder(EXTRACT_PATH):
-            _, frame_indices = torch.load(f'{EXTRACT_PATH}/{name}/features.pt')
-            for _ in frame_indices:
-                name_to_index[name] = (dataset_index, dataset_index + len(frame_indices))
-            dataset_index += len(frame_indices)
-        return name_to_index
-
-    def get_song_index_to_range(self, seed: int = 0) -> Dict[int, Tuple[int, int]]:
-        song_index_to_range = {}
-        dataset_index = 0
-        songs = [name for name in iterate_folder(EXTRACT_PATH)]
-        random.seed(seed)
-        random.shuffle(songs)
-        for i, name in enumerate(songs):
-            _, frame_indices = torch.load(f'{EXTRACT_PATH}/{name}/features.pt')
-            song_index_to_range[i] = dataset_index, dataset_index + len(frame_indices) - 1
-            dataset_index += len(frame_indices)
-        return song_index_to_range
-
-    def get_size(self) -> int:
-        """Get the total size of the dataset."""
-        return sum([len(torch.load(f'{EXTRACT_PATH}/{name}/features.pt')[1])
-            for name in iterate_folder(EXTRACT_PATH)])
-
-    def get_num_songs(self) -> int:
-        """Get the number of songs in the dataset."""
-        return len([0 for name in iterate_folder(EXTRACT_PATH)])
 
     def split_train_test_dev(self, seed: int = 0) -> Tuple[Subset, Subset, Subset]:
         """
@@ -122,7 +122,7 @@ class OnsetDataset(Dataset):
         for i, name in enumerate(iterate_folder(EXTRACT_PATH)):
             dataset += list(range(*self.name_to_index[name]))
             songs += [i]
-        song_index_to_range = self.get_song_index_to_range(seed)
+        song_index_to_range = _get_song_index_to_range(seed)
         def map_fn(x):
             return song_index_to_range[int(round(x))][1]
         split = tuple(map(map_fn, (self.num_songs*0.8, self.num_songs*0.9)))

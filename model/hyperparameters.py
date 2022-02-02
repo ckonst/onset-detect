@@ -47,7 +47,7 @@ class ML(HyperParameters):
     learning_rate: float = 0.001
     batch_size: int = 64
     num_epochs: int = 50
-    num_workers: int = max(cpu_count() // 4, 0)
+    num_workers: int = 0#max(cpu_count() // 4, 0)
     patience: int = 6
 
 def save(h: HyperParameters, file_path: str) -> None:
