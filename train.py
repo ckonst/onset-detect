@@ -7,26 +7,15 @@ from dataset.dataset import OnsetDataset
 from model.hyperparameters import ML, DSP
 from model.model import OnsetDetector
 
-from functools import wraps
-from time import time
-
 from librosa import frames_to_time
 from librosa.util import peak_pick
 from mir_eval.onset import f_measure
 import numpy as np
 
-def measure(f):
-    @wraps(f)
-    def wrapper(*args, **kwargs):
-        start = time()
-        result = f(*args, **kwargs)
-        end = time()
-        print('Elapsed time: {} ms'.format((end-start) * 1000))
-        return result
-    return wrapper
+MODEL_PATH = './model/trained_models'
 
 def train(train_data, validation_data, model, loss_fn, optimizer, ml):
-    print('Started training...')
+    print('Started training...\n')
     for epoch in range(ml.num_epochs):
         for i, ((spectrogram, indices), targets) in enumerate(train_data):
             spectrogram = spectrogram.to(model.device)
@@ -42,10 +31,9 @@ def train(train_data, validation_data, model, loss_fn, optimizer, ml):
         if validate(validation_data, model, loss_fn, optimizer, ml):
             continue
         else:
-            print(f'Patience Exceeded! ({model.ml.patience} epochs with no f-score improvement). Stopping Early.')
+            print(f'Patience Exceeded! ({model.patience} epochs with no f-score improvement). Stopping Early.')
             break
 
-#TODO: save the best model to the disk.
 def validate(validation_data, model, loss_fn, optimizer, ml):
     """
     Validate the data to make sure the model is learning properly.
@@ -75,6 +63,7 @@ def validate(validation_data, model, loss_fn, optimizer, ml):
     if fscore > model.hi_score:
         model.hi_score = fscore
         model.no_improve = 0
+        torch.save(model.state_dict(), f'{MODEL_PATH}/f_{fscore}.pt')
     else:
         model.no_improve += 1
 
@@ -85,7 +74,7 @@ def validate(validation_data, model, loss_fn, optimizer, ml):
 def evaluate(loader, model, dataset='test'):
     """Check accuracy on training & test to see how good our model is."""
 
-    print(f'evaluating the {dataset} set')
+    print(f'evaluating the {dataset} set...')
 
     tolerance = loader.dataset.dataset.dsp.tolerance
     fs = loader.dataset.dataset.dsp.fs
@@ -94,24 +83,23 @@ def evaluate(loader, model, dataset='test'):
     model.eval()
 
     fscore, precision, recall = (0., 0., 0.)
+    size = 0
     with torch.no_grad():
         for (spectrogram, indices), targets in loader:
             spectrogram = spectrogram.to(model.device)
             indices = indices.to(model.device)
             targets = targets.to(model.device)
             predictions = model((spectrogram, indices))
-            f, p, r = evaluate_batch(predictions, targets, tolerance, fs, stride)
-            fscore += f
-            precision += p
-            recall += r
+            f1, pr, re = evaluate_batch(predictions, targets, tolerance, fs, stride)
+            fscore += f1
+            precision += pr
+            recall += re
+            size += 1
+    fscore /= size
+    precision /= size
+    recall /= size
 
-    fscore /= len(dataset)
-    precision /= len(dataset)
-    recall /= len(dataset)
-
-    print(f"F-score: {fscore}\n\
-          precision: {precision}\n\
-             recall: {recall}")
+    print(f'F-score: {fscore}\nprecision: {precision}\nrecall: {recall}\n')
 
     model.train()
 
@@ -124,10 +112,17 @@ def evaluate_batch(predictions, targets, tolerance, fs, stride):
         fscore += f1
         precision += pr
         recall += re
-    return fscore, precision, recall
-
+    fscore /= predictions.shape[0]
+    precision /= predictions.shape[0]
+    recall /= predictions.shape[0]
+    return fscore , precision, recall
 
 def evaluate_frame(predictions, targets, tolerance, fs, stride):
+    """
+    Evaluate the current frame using the mir_eval (Bipartite matching) method.
+    Requires sample rate (fs) and stride to convert to back time domain.
+
+    """
     p = predictions.cpu().detach().numpy()
     p = peak_pick(p, 7, 7, 7, 7, 0.5, 5)
     p,= np.nonzero(p)
@@ -140,18 +135,33 @@ def evaluate_frame(predictions, targets, tolerance, fs, stride):
 
     return f_measure(t, p, tolerance)
 
-# TODO: implement testing
-def test(test_data, model, loss_fn, optimizer, ml):
-    pass
+def evaluate_frame_naive(predictions, targets):
+    """Naive evaluation without a tolerance window."""
+    preds = predictions.cpu().detach().numpy()
+    pred_peaks = peak_pick(preds, 7, 7, 7, 7, 0.5, 5).astype(np.int32)
+    preds = np.zeros(predictions.shape[0])
+    np.put(preds, pred_peaks, 1.)
 
-# TODO: implement inference
-def infer(input_data, model):
-    pass
+    targs = targets.cpu().detach().numpy()
+    targ_peaks = peak_pick(targs, 7, 7, 7, 7, 0.5, 5).astype(np.int32)
+    targs = np.zeros(targets.shape[0])
+    np.put(targs, targ_peaks, 1.)
+
+    sum_ = targs + preds
+    diff = targs - preds
+
+    tp = np.extract(sum_ > 1, sum_).shape[0]
+    fp = np.extract(diff < 0, diff).shape[0]
+    fn = np.extract(diff > 0, diff).shape[0]
+
+    return fscore_precision_recall(tp, fp, fn)
+
+def fscore_precision_recall(tp, fp, fn):
+    return tp / max(tp + 0.5*(fp + fn), 1), tp / max(tp + fp, 1), tp / max(tp + fn, 1)
 
 
 def main():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    #device = torch.device('cpu')
     ml = ML()
     dsp = DSP()
     dataset = OnsetDataset(ml=ml, dsp=dsp)
@@ -164,7 +174,7 @@ def main():
     optimizer = optim.Adam(model.parameters(), lr=ml.learning_rate)
 
     train(train_loader, validation_loader, model, loss_fn, optimizer, ml)
-    test(test_loader, model, loss_fn, optimizer, ml)
+    evaluate(test_loader, model)
 
 #%%
 

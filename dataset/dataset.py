@@ -81,6 +81,7 @@ class OnsetDataset(Dataset):
         self._size = _get_size()
         self.index_to_context  = _get_index_to_context()
         self.name_to_index = _get_name_to_index()
+        self.features, self.targets = self._load_tensors()
 
     def __len__(self) -> int:
         """Useful docstring goes here."""
@@ -89,13 +90,23 @@ class OnsetDataset(Dataset):
     def __getitem__(self, index: int) -> torch.Tensor:
         """Return a partition of the song's spectrogram, its index, and the ground truth sequence."""
         name, frame = self.index_to_context[index]
-        tensor, indices = torch.load(f'{EXTRACT_PATH}/{name}/features.pt')
-        targets = torch.load(f'{EXTRACT_PATH}/{name}/targets.pt')
+        tensor, indices = self.features[name]
+        targets = self.targets[name]
+        #tensor, indices = torch.load(f'{EXTRACT_PATH}/{name}/features.pt')
+        #targets = torch.load(f'{EXTRACT_PATH}/{name}/targets.pt')
         context = tensor.shape[-1] // len(indices)
         start = frame * context
         end = (frame + 1) * context
         frame = torch.HalfTensor([frame])
         return ((tensor[:, :, start:end], frame), targets[start:end])
+
+    def _load_tensors(self):
+        features = {}
+        targets = {}
+        for name in iterate_folder(EXTRACT_PATH):
+            features[name] = torch.load(f'{EXTRACT_PATH}/{name}/features.pt')
+            targets [name] = torch.load(f'{EXTRACT_PATH}/{name}/targets.pt')
+        return features, targets
 
     def split_train_test_dev(self, seed: int = 0) -> Tuple[Subset, Subset, Subset]:
         """

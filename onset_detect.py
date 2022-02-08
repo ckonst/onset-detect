@@ -7,6 +7,10 @@ Created on Wed Dec  9 02:40:34 2020
 
 import numpy as np
 import librosa as lb
+import torch
+
+from extract_features import extract_features
+from hyperparameters import DSP
 
 def get_lmfs(fs, input_sig, W, stride, fmin=20.0, fmax=20000.0):
     """Return the log mel frequency spectrogram."""
@@ -33,3 +37,10 @@ def superflux(fs, input_sig):
                                       hop_length=stride,
                                       units='time')
     return onset_sf
+
+# TODO: implement inference
+def CNN_onsets(input_data, model_path, dsp):
+    model = torch.load(model_path)
+    input_data = extract_features(input_data, dsp)
+    # ...
+

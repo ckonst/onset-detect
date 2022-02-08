@@ -8,7 +8,6 @@ Created on Thu Jul 15 00:38:46 2021
 from abc import ABC
 from dataclasses import dataclass, asdict, replace
 import json
-from os import cpu_count
 
 @dataclass
 class HyperParameters(ABC):
@@ -32,7 +31,7 @@ class DSP(HyperParameters):
     f_min: float = 20.0 # Humans cannot hear below 20 Hz
     f_max: float = 0.5 * fs # Nyquist frequency
     context: int = int(0.15 * fs / stride) # tensor width in fft frames
-    tolerance: int = int(0.01 * fs / stride) # margin of error in fft frames
+    tolerance: int = int(0.02 * fs / stride) # margin of error in fft frames
 
 @dataclass
 class ML(HyperParameters):
@@ -41,14 +40,14 @@ class ML(HyperParameters):
 
     input_size: int = DSP.bands # a bit wonky, but it works
     sequence_length: int = DSP.context
-    hidden_size: int = 4
+    hidden_size: int = 32
     num_layers: int = 1
     num_classes: int = 2
-    learning_rate: float = 0.001
-    batch_size: int = 64
-    num_epochs: int = 50
-    num_workers: int = 0#max(cpu_count() // 4, 0)
-    patience: int = 6
+    learning_rate: float = 0.0001
+    batch_size: int = 128
+    num_epochs: int = 100
+    num_workers: int = 8
+    patience: int = 20
 
 def save(h: HyperParameters, file_path: str) -> None:
     """Given a file path, save the current Hyperparameters to a json file."""
