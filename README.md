@@ -1,6 +1,6 @@
 # onset_detect
 A package for polyphonic music onset detection models for automatic rhythm game beatmap creation.
-## Data
+### Data
 The data is composed of beatmaps from the rhythm game, *Osu!*
 
 Each beatmap is contained in a folder named after the song and has 2 files: a .mp3 and a .osu
@@ -11,16 +11,20 @@ This package only uses the latter two datapoints for simplicity and use in [prot
 
 ### Setup
 
-Requires torch, torchaudio, librosa, mir-eval and all their dependencies:
+1. Requires torch, torchaudio, librosa, mir-eval and all their dependencies
 
-`pip install requirements.txt`
+    - `pip install requirements.txt`
 
-The data can be downloaded [here](https://www.dropbox.com/sh/sxbkcq7ulnmpdx1/AADaMk0guIlP87fsQIPemmSxa?dl=0), 
-put the `osu/` folder in `dataset/` and run `extraction/extract_data.py`.
+2. The data can be downloaded [here](https://www.dropbox.com/sh/sxbkcq7ulnmpdx1/AADaMk0guIlP87fsQIPemmSxa?dl=0)
+    - Put the `osu/` folder in `dataset/` and run `extraction/extract_data.py`.
 
-This will create a similar folder structure under `dataset/extracted/`.
+    - This will create a similar folder structure under `dataset/extracted/`.
 
-Now you can run `train.py` to train the model. The best scoring models will be saved in `model/trained_models/`.
+3. Run `extraction/extract_features.py` to extract log mel spectrograms from the mp3s
+    - Each folder now has tensors saved as .pt files
+
+4. Now you can run `train.py` to train the model. 
+    - The best scoring models will be saved in `model/trained_models/`.
 
 ### Model
 
