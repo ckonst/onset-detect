@@ -6,7 +6,7 @@ Created on Wed Jan 13 18:42:32 2021
 """
 
 from glob import glob
-from math import cos, pi
+import math
 
 import json
 import os
@@ -60,21 +60,22 @@ def write_json(name):
                     # If the beat length is inherited, it must be converted back to a usable value.
                     if not int(timing_points[timing_pointer][2]):
                         beat_length = 100 * (1 / -beat_length)
+
                     # This formula is taken directly from Osu's wiki.
                     dur = length / (slider_multiplier * beat_length * 100)
                     out_data['onsets'].extend([onset + dur * i for i in range(1, slides+1)])
 
-                    # Compute direction of the next onset by averaging the curve_points of the slider.
+                    # Compute the locations of each onset
+                    # by subtracting the initial slider position from the last curve point.
                     x0, y0 = int(data[0]), int(data[1])
                     curve_points = data[5].split('|')
-                    cps = list(map(lambda x: x.split(':'), curve_points))[1:]
-                    x1 = sum([int(x) for x, _ in cps]) / len(list(cps))
-                    y1 = sum([int(y) for _, y in cps]) / len(list(cps))
-                    sx, sy = min(max(x1-x0, -1), 1), min(max(y1-y0, -1), 1) # clamp values
+                    x1, y1 = list(map(lambda x: map(int, x.split(':')), curve_points[1:]))[-1]
+                    dx, dy = x1 - x0, y1 - y0
+
                     # Cos(pi*t) will map to {1, -1}, and oscillate as t increases monotonically.
                     # This will change the onset location according to the slider's behavior in Osu.
-                    out_data['xs'].extend([(sx*cos(pi*t)*length + x0) / OSU_X for t in range(slides)])
-                    out_data['ys'].extend([(sy*cos(pi*t)*length + y0) / OSU_Y for t in range(slides)])
+                    out_data['xs'].extend([(dx*math.cos(math.pi*t) + x0) / OSU_X for t in range(slides)])
+                    out_data['ys'].extend([(dy*math.cos(math.pi*t) + y0) / OSU_Y for t in range(slides)])
 
                 continue
 
@@ -82,6 +83,7 @@ def write_json(name):
                 if not data[0]:
                     timing_points_flag = False
                     continue
+
                 # (Time (ms), Multiplier, uninherited)
                 timing_points.append((float(data[0]), float(data[1]), int(data[6])))
 
