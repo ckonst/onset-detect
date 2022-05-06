@@ -9,11 +9,12 @@ import numpy as np
 import librosa as lb
 import torch
 
-from extract_features import extract_features
-from hyperparameters import DSP
+from extraction.extract_features import extract_features
+from model.hyperparameters import DSP
 
 def get_lmfs(fs, input_sig, W, stride, fmin=20.0, fmax=20000.0):
     """Return the log mel frequency spectrogram."""
+    input_sig = input_sig.astype(np.float32)
     mfs = lb.feature.melspectrogram(input_sig, sr=fs, n_fft=W,
                                      hop_length=stride,
                                      fmin=fmin, fmax=fmax)
@@ -42,5 +43,6 @@ def superflux(fs, input_sig):
 def CNN_onsets(input_data, model_path, dsp):
     model = torch.load(model_path)
     input_data = extract_features(input_data, dsp)
+    predictions = model(input_data)
     # ...
 

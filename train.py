@@ -82,7 +82,7 @@ def evaluate(loader, model, dataset='test'):
 
     model.eval()
 
-    fscore, precision, recall = (0., 0., 0.)
+    fscore, precision, recall = 0.0, 0.0, 0.0
     size = 0
     with torch.no_grad():
         for (spectrogram, indices), targets in loader:
@@ -106,7 +106,7 @@ def evaluate(loader, model, dataset='test'):
     return fscore, precision, recall
 
 def evaluate_batch(predictions, targets, tolerance, fs, stride):
-    fscore, precision, recall = (0., 0., 0.)
+    fscore, precision, recall = 0.0, 0.0, 0.0
     for p, t in zip(predictions, targets):
         f1, pr, re = evaluate_frame(p, t, tolerance, fs, stride)
         fscore += f1
@@ -115,7 +115,7 @@ def evaluate_batch(predictions, targets, tolerance, fs, stride):
     fscore /= predictions.shape[0]
     precision /= predictions.shape[0]
     recall /= predictions.shape[0]
-    return fscore , precision, recall
+    return fscore, precision, recall
 
 def evaluate_frame(predictions, targets, tolerance, fs, stride):
     """
@@ -150,9 +150,9 @@ def evaluate_frame_naive(predictions, targets):
     sum_ = targs + preds
     diff = targs - preds
 
-    tp = np.extract(sum_ > 1, sum_).shape[0]
-    fp = np.extract(diff < 0, diff).shape[0]
-    fn = np.extract(diff > 0, diff).shape[0]
+    tp = np.extract(sum_ > 1, sum_).size
+    fp = np.extract(diff < 0, diff).size
+    fn = np.extract(diff > 0, diff).size
 
     return fscore_precision_recall(tp, fp, fn)
 

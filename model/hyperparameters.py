@@ -41,12 +41,12 @@ class ML(HyperParameters):
     input_size: int = DSP.bands # a bit wonky, but it works
     sequence_length: int = DSP.context
     hidden_size: int = 32
-    num_layers: int = 1
+    num_layers: int = 2
     num_classes: int = 2
     learning_rate: float = 0.0001
     batch_size: int = 128
     num_epochs: int = 100
-    num_workers: int = 8
+    num_workers: int = 6
     patience: int = 20
 
 def save(h: HyperParameters, file_path: str) -> None:

@@ -5,9 +5,10 @@ Created on Thu Jan 14 14:35:39 2021
 @author: Christian Konstantinov
 """
 
-from glob import glob
 import json
+from glob import glob
 from librosa import load, time_to_frames
+from typing import Tuple
 
 import torch
 from torchaudio import transforms
@@ -39,14 +40,20 @@ def extract() -> None:
     inputs = [name for name in iterate_folder(RAW_PATH)]
     ml = ML()
     with Pool(ml.num_workers) as p:
-        p.map(process_song, inputs)
+        p.map(process_and_save_song, inputs)
 
-def process_song(name: str) -> None:
-    """Extract features from a given song name, then save them to the new folder."""
-    song_path = f'{EXTRACT_PATH}/{name}'
+def process_song(name: str) -> Tuple[Tuple[torch.Tensor, int], torch.Tensor]:
+    "Process one song and return target and feature Tensors with the index to the spectrogram frame."
     dsp = DSP()
+    song_path = f'{EXTRACT_PATH}/{name}'
     tensor, indices = extract_features(name, dsp)
     targets = create_onset_labels(tensor, song_path, dsp)
+    return (tensor, indices), targets
+
+def process_and_save_song(name: str) -> None:
+    """Extract features from a given song name, then save them to the new folder."""
+    (tensor, indices), targets = process_song(name)
+    song_path = f'{EXTRACT_PATH}/{name}'
     torch.save((tensor, indices), f'{song_path}/features.pt')
     torch.save(targets, f'{song_path}/targets.pt')
 
