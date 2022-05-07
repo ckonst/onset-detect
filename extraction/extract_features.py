@@ -6,8 +6,8 @@ Created on Thu Jan 14 14:35:39 2021
 """
 
 import json
+import librosa as lb
 from glob import glob
-from librosa import load, time_to_frames
 from typing import Tuple
 
 import torch
@@ -67,7 +67,7 @@ def extract_features(name: str, dsp: DSP) -> torch.Tensor:
 def create_onset_labels(features: torch.Tensor, song_path: str, dsp: DSP) -> torch.Tensor:
     with open(f'{song_path}/beatmap.json', 'r') as f:
         beatmap = json.load(f)
-    onsets = time_to_frames(beatmap['onsets'], sr=dsp.fs, hop_length=dsp.stride)
+    onsets = lb.time_to_frames(beatmap['onsets'], sr=dsp.fs, hop_length=dsp.stride)
     targets = torch.zeros(features.shape[2])
     for o in onsets:
         targets[o] = 1
@@ -76,7 +76,7 @@ def create_onset_labels(features: torch.Tensor, song_path: str, dsp: DSP) -> tor
 def get_lmfs(name: str, dsp: DSP) -> torch.Tensor:
     """Return the log mel frequency spectrogram."""
     map_path = f'{RAW_PATH}/{name}'
-    mono_sig, fs = load(glob(f'{map_path}/*.mp3')[0], sr=dsp.fs, res_type='kaiser_fast')
+    mono_sig, fs = lb.load(glob(f'{map_path}/*.mp3')[0], sr=dsp.fs, res_type='kaiser_fast')
     mono_sig = torch.from_numpy(mono_sig)
     norm_sig = normalize(mono_sig)
 

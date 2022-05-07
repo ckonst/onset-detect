@@ -39,10 +39,31 @@ def superflux(fs, input_sig):
                                       units='time')
     return onset_sf
 
-# TODO: implement inference
-def CNN_onsets(input_data, model_path, dsp):
+def get_onset_frames(predictions):
+    p = predictions.cpu().detach().numpy()
+    p = lb.util.peak_pick(p, 7, 7, 7, 7, 0.5, 5)
+    p,= np.nonzero(p)
+    return p
+
+def get_onset_times(predictions, fs, stride):
+    p = get_onset_frames(predictions)
+    p = lb.frames_to_time(p, fs, stride)
+    return p
+
+def neural_onsets(audio_path, model_path, dsp: DSP):
     model = torch.load(model_path)
-    input_data = extract_features(input_data, dsp)
-    predictions = model(input_data)
-    # ...
+    (spectrogram, indices), targets = extract_features(audio_path, dsp)
+    predictions = model((spectrogram, indices))
+    return get_onset_times(predictions, dsp.fs, dsp.stride)
+
+def create_click_track(onset_times, input_sig=None):
+    click, _ = lb.load('./baseline/click.wav')
+    if input_sig is None:
+        click_track = np.zeros(onset_times[-1] + click.size)
+    else:
+        click_track = input_sig
+    for o in onset_times:
+        click_track[o:o+click[:, 0].size] += click[:click_track.size-o, 0]
+    return click_track
+
 

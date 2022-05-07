@@ -7,7 +7,7 @@ Created on Fri May  6 01:02:59 2022
 
 import unittest
 
-class TrainingTestCase(unittest.TestCase):
+class FeatureExtractionTestCase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
