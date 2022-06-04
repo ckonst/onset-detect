@@ -24,6 +24,11 @@ EXTRACT_PATH = f'{DATA_PATH}/extracted'
 from functools import wraps
 from time import time
 
+# TODO:
+# - Add log mel / STFT autocorrelation = |G(x)|² preprocessing
+# - Multiple spectrogram feature processing
+# - Maybe tempo estimation
+
 def measure(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
