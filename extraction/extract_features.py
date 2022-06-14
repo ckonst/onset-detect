@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu Jan 14 14:35:39 2021
+Created on Thu Jan 14 14:35:39 2021.
 
 @author: Christian Konstantinov
 """
 
 import json
 import librosa as lb
+
 from glob import glob
 from typing import Tuple
 
@@ -14,32 +15,21 @@ import torch
 from torchaudio import transforms
 from torch.multiprocessing import Pool
 
+from evaluation.time_elapsed import timed
 from file_reading.folder_iterator import iterate_folder
 from model.hyperparameters import DSP, ML
+
 
 DATA_PATH = '../dataset/osu'
 RAW_PATH = f'{DATA_PATH}/raw'
 EXTRACT_PATH = f'{DATA_PATH}/extracted'
-
-from functools import wraps
-from time import time
 
 # TODO:
 # - Add log mel / STFT autocorrelation = |G(x)|² preprocessing
 # - Multiple spectrogram feature processing
 # - Maybe tempo estimation
 
-def measure(f):
-    @wraps(f)
-    def wrapper(*args, **kwargs):
-        start = time()
-        result = f(*args, **kwargs)
-        end = time()
-        print('Elapsed time: {} ms'.format((end-start) * 1000))
-        return result
-    return wrapper
-
-@measure
+@timed
 def extract() -> None:
     """Create processes to parallelize feature extraction."""
     inputs = [name for name in iterate_folder(RAW_PATH)]
@@ -48,7 +38,7 @@ def extract() -> None:
         p.map(process_and_save_song, inputs)
 
 def process_song(name: str) -> Tuple[Tuple[torch.Tensor, int], torch.Tensor]:
-    "Process one song and return target and feature Tensors with the index to the spectrogram frame."
+    """Process one song and return target and feature Tensors with the index to the spectrogram frame."""
     dsp = DSP()
     song_path = f'{EXTRACT_PATH}/{name}'
     tensor, indices = extract_features(name, dsp)
@@ -70,6 +60,7 @@ def extract_features(name: str, dsp: DSP) -> torch.Tensor:
     return tensor, indices
 
 def create_onset_labels(features: torch.Tensor, song_path: str, dsp: DSP) -> torch.Tensor:
+    """Given the features (spectrogram) of the data, return the target onsets."""
     with open(f'{song_path}/beatmap.json', 'r') as f:
         beatmap = json.load(f)
     onsets = lb.time_to_frames(beatmap['onsets'], sr=dsp.fs, hop_length=dsp.stride)
@@ -94,6 +85,7 @@ def get_lmfs(name: str, dsp: DSP) -> torch.Tensor:
     return lmfs
 
 def pad_tensor(unpadded: torch.Tensor, size: int, W: int) -> torch.Tensor:
+    """Return the input tensor padded to be the length of the nearest mulitple of W."""
     pad_sig = torch.zeros(unpadded.shape[0], unpadded.shape[1], size + (W - (size % W)))
     pad_sig[:, :, :size] = unpadded
     return pad_sig
@@ -104,6 +96,7 @@ def normalize(tensor: torch.Tensor) -> torch.Tensor:
     return minus_mean / minus_mean.abs().max()
 
 def create_coordinate_labels():
+    """Return the coordinate label dataset."""
     targets = []
     for name in iterate_folder(EXTRACT_PATH):
         path = f'{EXTRACT_PATH}/{name}'
@@ -123,7 +116,7 @@ def create_coordinate_labels():
     targets = torch.stack(targets)
     dataset = torch.full((len(targets), 2, pad), 0.0)
     dataset += targets
+    return dataset
 
-#%%
 if __name__ == '__main__':
     extract()

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu Aug 12 20:16:53 2021
+Created on Thu Aug 12 20:16:53 2021.
 
 @author: Christian Konstantinov
 """
@@ -9,11 +9,10 @@ import torch
 from torch import nn
 
 class OnsetDetector(nn.Module):
-
     """Onset detection model for automatic rhythm game mapping."""
 
     def __init__(self, **kwargs):
-        """Useful docstring goes here."""
+        """Initialize all the model's layers and parameters."""
         super(OnsetDetector, self).__init__()
         self.__dict__.update(**kwargs)
         self.relu = nn.ReLU()
@@ -34,6 +33,7 @@ class OnsetDetector(nn.Module):
         self.hi_score = 0.
 
     def forward(self, x):
+        """Forward pass of the model."""
         x0, x1 = x
         x0 = self.relu(self.bn(self.conv(x0)))
         x0 = self.relu(self.bn(self.conv(x0)))

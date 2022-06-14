@@ -1,0 +1,26 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Jun 14 15:57:44 2022
+
+@author: Christian Konstantinov
+"""
+
+import unittest
+
+from dataset.dataset import OnsetDataset
+from model.hyperparameters import DSP, ML
+
+from torch.utils.data import Subset
+
+class TrainingTestCase(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.ml = ML()
+        cls.dsp = DSP()
+        cls.ods = OnsetDataset(cls.ml, cls.dsp)
+
+        def test_split_train_test_dev(self):
+            train, test, dev = self.ods.split_train_test_dev()
+            assert type(train) is type(test) is type(dev) is Subset
+            # TODO: assert that split percentages are correct

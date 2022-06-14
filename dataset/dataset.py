@@ -1,35 +1,32 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Jan 19 22:29:13 2021
+Created on Tue Jan 19 22:29:13 2021.
 
 @author: Christian Konstantinov
 """
 
+import random
 import torch
-from torch.utils.data import Dataset, Subset
 
+from evaluation.time_elapsed import timed
 from file_reading.folder_iterator import iterate_folder
 
-from functools import wraps
-import random
-from time import time
 from typing import Dict, Tuple
 
-def measure(f):
-    @wraps(f)
-    def wrapper(*args, **kwargs):
-        start = time()
-        result = f(*args, **kwargs)
-        end = time()
-        print('Elapsed time: {} ms'.format((end-start) * 1000))
-        return result
-    return wrapper
+from torch.utils.data import Dataset, Subset
 
 DATA_PATH = '../dataset/osu' if __name__ == '__main__' else './dataset/osu'
 EXTRACT_PATH = f'{DATA_PATH}/extracted'
 
-def _get_index_to_context() -> Tuple[Dict[int, Tuple[str, int]]]:
-    """Create a mapping from Dataset index (int) to name (str) and context frame index (int)."""
+def _get_index_to_context() -> Dict[int, Tuple[str, int]]:
+    """Create a mapping from Dataset index to name and context frame index.
+
+    Returns
+    -------
+    Dict[int, Tuple[str, int]]
+        A mapping from dataset index keys to name and context frame index pairs.
+
+    """
     index_to_context = {}
     dataset_index = 0
     for name in iterate_folder(EXTRACT_PATH):
@@ -40,6 +37,15 @@ def _get_index_to_context() -> Tuple[Dict[int, Tuple[str, int]]]:
     return index_to_context
 
 def _get_name_to_index() -> Dict[str, Tuple[int, int]]:
+    """Create a mapping from name to Dataset index and context frame.
+
+
+    Returns
+    -------
+    Dict[str, Tuple[int, int]]
+        DESCRIPTION.
+
+    """
     name_to_index = {}
     dataset_index = 0
     for name in iterate_folder(EXTRACT_PATH):
@@ -62,7 +68,10 @@ def _get_song_index_to_range(seed: int = 0) -> Dict[int, Tuple[int, int]]:
     return song_index_to_range
 
 def _get_size() -> int:
-    """Get the total size of the dataset."""
+    """Get the total size of the dataset in number of tensor partitions.
+
+    Calculated using the list of indices for each partition.
+    """
     return sum([len(torch.load(f'{EXTRACT_PATH}/{name}/features.pt')[1])
         for name in iterate_folder(EXTRACT_PATH)])
 
@@ -71,11 +80,11 @@ def _get_num_songs() -> int:
     return len([0 for name in iterate_folder(EXTRACT_PATH)])
 
 class OnsetDataset(Dataset):
-
     """Dataset class for mapping spectrogram frames to onset classes."""
 
+    @timed
     def __init__(self, **kwargs):
-        """Useful docstring goes here."""
+        """Initialize the dataset with conversion maps, and loaded tensors."""
         self.__dict__.update(**kwargs)
         self.num_songs = _get_num_songs()
         self._size = _get_size()
@@ -84,7 +93,7 @@ class OnsetDataset(Dataset):
         self.features, self.targets = self._load_tensors()
 
     def __len__(self) -> int:
-        """Useful docstring goes here."""
+        """Get the total size of the dataset in number of tensor partitions."""
         return self._size
 
     def __getitem__(self, index: int) -> torch.Tensor:
@@ -109,13 +118,14 @@ class OnsetDataset(Dataset):
         return features, targets
 
     def split_train_test_dev(self, seed: int = 0) -> Tuple[Subset, Subset, Subset]:
-        """
-        Return the dataset as subsets for training, testing, and validation.
+        """Return the dataset as subsets for training, testing, and validation.
+
         The data is split 80/10/10 by the number of songs in the dataset
         as opposed to the actual spectrogram frames.
         While this might make the code slightly more complicated,
         each frame should not be treated as an independent data point,
-        they should instead form a coherent beatmap of the entire song.
+        they should instead form a coherent beatmap of the entire song
+        (i.e. spectrogram partitions of the same song should be highly correlated).
 
         Parameters
         ----------
@@ -130,6 +140,9 @@ class OnsetDataset(Dataset):
         """
         dataset = []
         songs = []
+
+        #dataset, songs = map(None, *[list(range(*self.name_to_index[name])), [i] for i, name in enumerate(iterate_folder(EXTRACT_PATH))])
+
         for i, name in enumerate(iterate_folder(EXTRACT_PATH)):
             dataset += list(range(*self.name_to_index[name]))
             songs += [i]
@@ -142,22 +155,18 @@ class OnsetDataset(Dataset):
                 Subset(self, dataset[split[1]:        ]))
 
 class CoordinateDataset(Dataset):
-
     """Dataset class for mapping Onset times to x, y coordinates."""
+
     # TODO: Finish implementing this class
 
     def __init__(self, **kwargs):
-        """Useful docstring goes here."""
+        """Write a useful docstring here."""
         self.__dict__.update(kwargs)
 
     def __len__(self):
-        """Useful docstring goes here."""
+        """Write a useful docstring here."""
         pass
 
     def __getitem__(self, index):
-        """Useful docstring goes here."""
+        """Write a useful docstring here."""
         pass
-
-if __name__ == '__main__':
-    ods = OnsetDataset()
-    train, test, dev = ods.split_train_test_dev(2)

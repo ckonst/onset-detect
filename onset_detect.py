@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Dec  9 02:40:34 2020
+Created on Wed Dec  9 02:40:34 2020.
 
 @author: Christian Konstantinov
 """
@@ -40,9 +40,7 @@ def superflux(fs, input_sig):
     return onset_sf
 
 def get_onset_frames(predictions: torch.Tensor):
-    """
-    Given a time-domain Onset Detection Function (ODF) as a torch Tensor,
-    return the selected peaks as STFT frame indices.
+    """Return the selected peaks as STFT frame indices.
 
     Parameters
     ----------
@@ -61,9 +59,7 @@ def get_onset_frames(predictions: torch.Tensor):
     return p
 
 def get_onset_times(predictions: torch.Tensor, fs: int, stride: int):
-    """
-    Given a time-domain Onset Detection Function (ODF) as a torch Tensor,
-    return the time-domain onsets as a numpy array.
+    """Return the time-domain onsets as a numpy array.
 
     Parameters
     ----------
@@ -86,8 +82,7 @@ def get_onset_times(predictions: torch.Tensor, fs: int, stride: int):
 
 # TODO: make an inference class to generalize to other applications.
 def neural_onsets(audio_path, model_path, dsp: DSP):
-    """
-    Inference for the learned neural network model.
+    """Inference for the learned neural network model.
 
     Parameters
     ----------
@@ -110,8 +105,8 @@ def neural_onsets(audio_path, model_path, dsp: DSP):
     return get_onset_times(predictions, dsp.fs, dsp.stride)
 
 def create_click_track(onset_times, input_sig=None):
-    """
-    Create a click track of the given onsets.
+    """Create a click track of the given onsets.
+
     If input_sig is provided the click track will be added to the signal.
 
     Parameters
