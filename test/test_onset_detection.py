@@ -11,10 +11,11 @@ class OnsetDetectionTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
          cls.input_sig, cls.fs = lb.load('./audio/pop_shuffle.wav')
+         cls.dsp = DSP()
          print(cls.input_sig, cls.fs)
 
     def test_get_lmfs(self):
-        lmfs = onset_detect.get_lmfs(self.fs, self.input_sig, DSP.W, DSP.stride)
+        lmfs = onset_detect.get_lmfs(self.fs, self.input_sig, self.dsp.W, self.dsp.stride)
         assert lmfs.size > 0
 
     def test_superflux(self):

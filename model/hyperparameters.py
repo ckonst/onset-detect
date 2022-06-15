@@ -51,7 +51,7 @@ class ML(HyperParameters):
     """Dataclass for storing and accessing machine learning hyperparameters."""
 
     input_size: int = DSP.bands # a bit wonky, but it works
-    sequence_length: int = DSP.context
+    sequence_length: int = DSP().context # even worse, but still necessary
     hidden_size: int = 32
     num_layers: int = 2
     num_classes: int = 2

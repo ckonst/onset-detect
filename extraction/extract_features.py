@@ -7,11 +7,12 @@ Created on Thu Jan 14 14:35:39 2021.
 
 import json
 import librosa as lb
+import numpy as np
+import torch
 
 from glob import glob
 from typing import Tuple
 
-import torch
 from torchaudio import transforms
 from torch.multiprocessing import Pool
 
@@ -59,6 +60,9 @@ def extract_features(name: str, dsp: DSP) -> torch.Tensor:
     indices = list(range(0, tensor.shape[-1] // dsp.context))
     return tensor, indices
 
+def extract_features_for_inference(path: str):
+    pass
+
 def create_onset_labels(features: torch.Tensor, song_path: str, dsp: DSP) -> torch.Tensor:
     """Given the features (spectrogram) of the data, return the target onsets."""
     with open(f'{song_path}/beatmap.json', 'r') as f:
@@ -69,10 +73,16 @@ def create_onset_labels(features: torch.Tensor, song_path: str, dsp: DSP) -> tor
         targets[o] = 1
     return targets
 
+def load_audio(path: str, fs: int = 44100, mode='file') -> Tuple[np.ndarray, int]:
+    if mode == 'file':
+        return lb.load(path, sr=fs, res_type='kaiser_fast')
+    elif mode == 'dir':
+        map_path = f'{RAW_PATH}/{path}'
+        return lb.load(glob(f'{map_path}/*.mp3')[0], sr=fs, res_type='kaiser_fast')
+
 def get_lmfs(name: str, dsp: DSP) -> torch.Tensor:
     """Return the log mel frequency spectrogram."""
-    map_path = f'{RAW_PATH}/{name}'
-    mono_sig, fs = lb.load(glob(f'{map_path}/*.mp3')[0], sr=dsp.fs, res_type='kaiser_fast')
+    mono_sig, fs = load_audio(name)
     mono_sig = torch.from_numpy(mono_sig)
     norm_sig = normalize(mono_sig)
 

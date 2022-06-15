@@ -132,4 +132,9 @@ def create_click_track(onset_times, input_sig=None):
         click_track[o:o+click[:, 0].size] += click[:click_track.size-o, 0]
     return click_track
 
+def main():
+    onset_times = neural_onsets('./audio/pop_shuffle.wav', './model/trained_models/f_0.5245676577669902.pt', DSP())
+    print(onset_times)
 
+if __name__ == '__main__':
+    main()
