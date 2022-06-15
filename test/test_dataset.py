@@ -23,4 +23,8 @@ class TrainingTestCase(unittest.TestCase):
         def test_split_train_test_dev(self):
             train, test, dev = self.ods.split_train_test_dev()
             assert type(train) is type(test) is type(dev) is Subset
-            # TODO: assert that split percentages are correct
+            assert len(dev) != 0 and len(train) != 0 and len(test) != 0
+            assert len(dev) < len(train) > len(test)
+
+if __name__ == '__main__':
+    unittest.main()

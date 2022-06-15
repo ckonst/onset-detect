@@ -16,14 +16,14 @@ This package only uses the latter two datapoints for simplicity and use in [prot
     - `pip install requirements.txt`
 
 2. The data can be downloaded [here](https://www.dropbox.com/sh/sxbkcq7ulnmpdx1/AADaMk0guIlP87fsQIPemmSxa?dl=0)
-    - Put the `osu/` folder in `dataset/` and run `extraction/extract_data.py`.
+    - Put the `osu/` folder in `dataset/` and run `python -m extraction.extract_data`.
 
     - This will create a similar folder structure under `dataset/extracted/`.
 
-3. Run `extraction/extract_features.py` to extract log mel spectrograms from the mp3s
+3. Run `python -m extraction.extract_features` to extract log mel spectrograms from the mp3s
     - Each folder now has tensors saved as .pt files
 
-4. Now you can run `train.py` to train the model. 
+4. Now you can run train the model with `python -m model.train`. 
     - The best scoring models will be saved in `model/trained_models/`.
 
 ### Model

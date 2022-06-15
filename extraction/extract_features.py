@@ -20,7 +20,7 @@ from file_reading.folder_iterator import iterate_folder
 from model.hyperparameters import DSP, ML
 
 
-DATA_PATH = '../dataset/osu'
+DATA_PATH = './dataset/osu'
 RAW_PATH = f'{DATA_PATH}/raw'
 EXTRACT_PATH = f'{DATA_PATH}/extracted'
 
@@ -29,13 +29,20 @@ EXTRACT_PATH = f'{DATA_PATH}/extracted'
 # - Multiple spectrogram feature processing
 # - Maybe tempo estimation
 
-@timed
+@timed(units='s')
 def extract() -> None:
     """Create processes to parallelize feature extraction."""
     inputs = [name for name in iterate_folder(RAW_PATH)]
     ml = ML()
     with Pool(ml.num_workers) as p:
         p.map(process_and_save_song, inputs)
+
+def process_and_save_song(name: str) -> None:
+    """Extract features from a given song name, then save them to the new folder."""
+    (tensor, indices), targets = process_song(name)
+    song_path = f'{EXTRACT_PATH}/{name}'
+    torch.save((tensor, indices), f'{song_path}/features.pt')
+    torch.save(targets, f'{song_path}/targets.pt')
 
 def process_song(name: str) -> Tuple[Tuple[torch.Tensor, int], torch.Tensor]:
     """Process one song and return target and feature Tensors with the index to the spectrogram frame."""
@@ -44,13 +51,6 @@ def process_song(name: str) -> Tuple[Tuple[torch.Tensor, int], torch.Tensor]:
     tensor, indices = extract_features(name, dsp)
     targets = create_onset_labels(tensor, song_path, dsp)
     return (tensor, indices), targets
-
-def process_and_save_song(name: str) -> None:
-    """Extract features from a given song name, then save them to the new folder."""
-    (tensor, indices), targets = process_song(name)
-    song_path = f'{EXTRACT_PATH}/{name}'
-    torch.save((tensor, indices), f'{song_path}/features.pt')
-    torch.save(targets, f'{song_path}/targets.pt')
 
 def extract_features(name: str, dsp: DSP) -> torch.Tensor:
     """Extract the spectrogams and tensor indices for the dataset."""

@@ -5,15 +5,15 @@ Created on Wed Jan 13 18:42:32 2021
 @author: Christian Konstantinov
 """
 
-from glob import glob
-import math
-
 import json
+import math
 import os
+
+from glob import glob
 
 from file_reading.folder_iterator import iterate_folder
 
-DATA_PATH = '../dataset/osu'
+DATA_PATH = './dataset/osu'
 RAW_PATH = f'{DATA_PATH}/raw'
 EXTRACT_PATH = f'{DATA_PATH}/extracted'
 
@@ -107,6 +107,6 @@ def extract():
         if not os.path.exists(path):
             os.makedirs(path)
         write_json(name)
-#%%
+
 if __name__ == '__main__':
     extract()

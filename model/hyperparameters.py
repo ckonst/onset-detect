@@ -26,12 +26,24 @@ class DSP(HyperParameters):
 
     fs: int = 8000 # sample rate
     W: int = 1024 # fft window size
-    stride: int = int(0.001 * fs)
     bands: int = 20 # number of frequency bins for the spectrogram
     f_min: float = 20.0 # Humans cannot hear below 20 Hz
     f_max: float = 0.5 * fs # Nyquist frequency
-    context: int = int(0.15 * fs / stride) # tensor width in fft frames
-    tolerance: int = int(0.02 * fs / stride) # margin of error in fft frames
+    _stride: float = 0.001 # stride in seconds for stft
+    _context: float = 0.15 # context partitions in seconds
+    _tolerance: float = 0.02 # margin of error in seconds
+
+    @property
+    def stride(self) -> int: # stride in samples for stft
+        return int(self._stride * self.fs)
+
+    @property
+    def context(self) -> int: # tensor width in fft frames
+        return int(self._context * self.fs / self.stride)
+
+    @property
+    def tolerance(self) -> int: # margin of error in fft frames
+        return int(self._tolerance * self.fs / self.stride)
 
 @dataclass
 class ML(HyperParameters):

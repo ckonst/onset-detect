@@ -15,7 +15,7 @@ from typing import Dict, Tuple
 
 from torch.utils.data import Dataset, Subset
 
-DATA_PATH = '../dataset/osu' if __name__ == '__main__' else './dataset/osu'
+DATA_PATH = './dataset/osu'
 EXTRACT_PATH = f'{DATA_PATH}/extracted'
 
 def _get_index_to_context() -> Dict[int, Tuple[str, int]]:
@@ -23,7 +23,7 @@ def _get_index_to_context() -> Dict[int, Tuple[str, int]]:
 
     Returns
     -------
-    Dict[int, Tuple[str, int]]
+    index_to_context: Dict[int, Tuple[str, int]]
         A mapping from dataset index keys to name and context frame index pairs.
 
     """
@@ -41,8 +41,8 @@ def _get_name_to_index() -> Dict[str, Tuple[int, int]]:
 
     Returns
     -------
-    Dict[str, Tuple[int, int]]
-        DESCRIPTION.
+    name_to_index: Dict[str, Tuple[int, int]]
+        A mapping from song names to Dataset index and context frame index pairs.
 
     """
     name_to_index = {}
@@ -139,8 +139,6 @@ class OnsetDataset(Dataset):
         """
         dataset = []
         songs = []
-
-        #dataset, songs = map(None, *[list(range(*self.name_to_index[name])), [i] for i, name in enumerate(iterate_folder(EXTRACT_PATH))])
 
         for i, name in enumerate(iterate_folder(EXTRACT_PATH)):
             dataset += list(range(*self.name_to_index[name]))

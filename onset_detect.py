@@ -81,6 +81,7 @@ def get_onset_times(predictions: torch.Tensor, fs: int, stride: int):
     return p
 
 # TODO: make an inference class to generalize to other applications.
+# TODO: TEST
 def neural_onsets(audio_path, model_path, dsp: DSP):
     """Inference for the learned neural network model.
 
