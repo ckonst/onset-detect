@@ -8,7 +8,6 @@ Created on Tue Jan 19 22:29:13 2021.
 import random
 import torch
 
-#from evaluation.time_elapsed import timed
 from file_reading.folder_iterator import iterate_folder
 
 from typing import Dict, Tuple
