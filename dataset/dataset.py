@@ -39,7 +39,6 @@ def _get_index_to_context() -> Dict[int, Tuple[str, int]]:
 def _get_name_to_index() -> Dict[str, Tuple[int, int]]:
     """Create a mapping from name to Dataset index and context frame.
 
-
     Returns
     -------
     Dict[str, Tuple[int, int]]

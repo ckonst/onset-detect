@@ -5,10 +5,7 @@ import numpy as np
 import unittest
 import torch
 
-from evaluation.model_eval import (
-    evaluate_batch, evaluate_frame,
-    evaluate_frame_naive, fscore_precision_recall
-    )
+from evaluation import model_eval
 from onset_detect import get_lmfs
 
 class TrainingTestCase(unittest.TestCase):
@@ -42,20 +39,20 @@ class TrainingTestCase(unittest.TestCase):
         pass
 
     def test_evaluate_batch(self):
-        self.run_basic_test(2, evaluate_batch, 0.01, 100, 1)
+        self.run_basic_test(2, model_eval.evaluate_batch, 0.01, 100, 1)
 
     def test_evaluate_frame(self):
-        self.run_basic_test(1, evaluate_frame, 0.01, 100, 1)
+        self.run_basic_test(1, model_eval.evaluate_frame, 0.01, 100, 1)
 
     def test_evaluate_frame_naive(self):
-        self.run_basic_test(1, evaluate_frame_naive)
+        self.run_basic_test(1, model_eval.evaluate_frame_naive)
 
     def test_fscore_precision_recall(self):
         tp, fp, fn = 100, 300, 400
-        assert fscore_precision_recall(tp, fp, fn)\
+        assert model_eval.fscore_precision_recall(tp, fp, fn)\
             == (0.2222222222222222, 0.25, 0.2)
         tp, fp, fn = 0, 0, 0
-        assert fscore_precision_recall(tp, fp, fn)\
+        assert model_eval.fscore_precision_recall(tp, fp, fn)\
             == (0.0, 0.0, 0.0)
 
 if __name__ == '__main__':

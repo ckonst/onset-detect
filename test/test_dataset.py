@@ -18,7 +18,7 @@ class TrainingTestCase(unittest.TestCase):
     def setUpClass(cls):
         cls.ml = ML()
         cls.dsp = DSP()
-        cls.ods = OnsetDataset(cls.ml, cls.dsp)
+        cls.ods = OnsetDataset(ml=cls.ml, dsp=cls.dsp)
 
         def test_split_train_test_dev(self):
             train, test, dev = self.ods.split_train_test_dev()

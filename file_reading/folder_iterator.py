@@ -4,7 +4,6 @@ import os
 def iterate_folder(root: str) -> str:
     """Given a path to a directory, yield the name of each subdirectory.
 
-
     Parameters
     ----------
     root : str
