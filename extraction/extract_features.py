@@ -55,13 +55,17 @@ def process_song(name: str) -> Tuple[Tuple[torch.Tensor, int], torch.Tensor]:
 
 def extract_features(name: str, dsp: DSP) -> torch.Tensor:
     """Extract the spectrogams and tensor indices for the dataset."""
-    tensor = get_lmfs(name, dsp)
+    audio_sig, _ = load_audio(name, fs=dsp.fs, mode='dir')
+    tensor = get_lmfs(audio_sig, dsp)
     tensor = pad_tensor(tensor, tensor.shape[-1], dsp.context)
     indices = list(range(0, tensor.shape[-1] // dsp.context))
     return tensor, indices
 
-def extract_features_for_inference(path: str):
-    pass
+def extract_features_for_inference(path: str, dsp: DSP):
+    audio_sig, _ = load_audio(path, fs=dsp.fs, mode='file')
+    tensor = get_lmfs(audio_sig, dsp)
+    indices = list(range(0, tensor.shape[-1] // dsp.context))
+    return tensor, indices
 
 def create_onset_labels(features: torch.Tensor, song_path: str, dsp: DSP) -> torch.Tensor:
     """Given the features (spectrogram) of the data, return the target onsets."""
@@ -80,18 +84,16 @@ def load_audio(path: str, fs: int = 44100, mode='file') -> Tuple[np.ndarray, int
         map_path = f'{RAW_PATH}/{path}'
         return lb.load(glob(f'{map_path}/*.mp3')[0], sr=fs, res_type='kaiser_fast')
 
-def get_lmfs(name: str, dsp: DSP) -> torch.Tensor:
+def get_lmfs(input_sig: np.ndarray, dsp: DSP) -> torch.Tensor:
     """Return the log mel frequency spectrogram."""
-    mono_sig, fs = load_audio(name)
-    mono_sig = torch.from_numpy(mono_sig)
+    mono_sig = torch.from_numpy(input_sig)
     norm_sig = normalize(mono_sig)
-
-    mfs = transforms.MelSpectrogram(sample_rate=fs, n_fft=dsp.W,
+    mfs = transforms.MelSpectrogram(sample_rate=dsp.fs, n_fft=dsp.W,
                                     f_min=dsp.f_min, f_max=dsp.f_max,
                                     n_mels=dsp.bands, hop_length=dsp.stride,
                                     window_fn=torch.hamming_window)(norm_sig)
 
-    lmfs = transforms.AmplitudeToDB()(mfs).unsqueeze(0).half().detach()
+    lmfs = transforms.AmplitudeToDB()(mfs).unsqueeze(0).detach()
     return lmfs
 
 def pad_tensor(unpadded: torch.Tensor, size: int, W: int) -> torch.Tensor:
@@ -127,6 +129,6 @@ def create_coordinate_labels():
     dataset = torch.full((len(targets), 2, pad), 0.0)
     dataset += targets
     return dataset
-
+#%%
 if __name__ == '__main__':
     extract()

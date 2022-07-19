@@ -9,8 +9,12 @@ import numpy as np
 import librosa as lb
 import torch
 
-from extraction.extract_features import extract_features
-from model.hyperparameters import DSP
+from scipy.io.wavfile import write
+from torch.utils.data import DataLoader, Dataset
+
+from extraction.extract_features import extract_features_for_inference
+from model.hyperparameters import DSP, ML
+from model.model import OnsetDetector
 
 def get_lmfs(fs, input_sig, W, stride, fmin=20.0, fmax=20000.0):
     """Return the log mel frequency spectrogram."""
@@ -54,11 +58,31 @@ def get_onset_frames(predictions: torch.Tensor):
 
     """
     p = predictions.cpu().detach().numpy()
-    p = lb.util.peak_pick(p, 7, 7, 7, 7, 0.5, 5)
+    p = lb.util.peak_pick(p, pre_max=3, post_max=3, pre_avg=3, post_avg=5, delta=0.5, wait=10)
     p,= np.nonzero(p)
     return p
 
-def get_onset_times(predictions: torch.Tensor, fs: int, stride: int):
+def get_onset_samples(predictions: torch.Tensor, stride: int) -> np.ndarray:
+    """Return the time-domain onsets as a numpy array.
+
+    Parameters
+    ----------
+    predictions : torch.Tensor
+        The predicted ODF.
+    stride : int
+        The stride for the STFT.
+
+    Returns
+    -------
+    p : np.ndarray
+        The selected time-domain onsets in samples.
+
+    """
+    p = get_onset_frames(predictions)
+    p = lb.frames_to_samples(p, hop_length=stride)
+    return p
+
+def get_onset_times(predictions: torch.Tensor, fs: int, stride: int) -> np.ndarray:
     """Return the time-domain onsets as a numpy array.
 
     Parameters
@@ -77,12 +101,28 @@ def get_onset_times(predictions: torch.Tensor, fs: int, stride: int):
 
     """
     p = get_onset_frames(predictions)
-    p = lb.frames_to_time(p, fs, stride)
+    p = lb.frames_to_time(p, sr=fs, hop_length=stride)
     return p
 
-# TODO: make an inference class to generalize to other applications.
-# TODO: TEST
-def neural_onsets(audio_path, model_path, dsp: DSP):
+class Inference(Dataset):
+    def __init__(self, tensor, indices):
+        self.tensor = tensor
+        self.indices = indices
+        self._size = len(indices)
+    def __len__(self):
+        return self._size
+    def __getitem__(self, index: int):
+        frame = index
+        tensor, indices = self.tensor, self.indices
+        context = tensor.shape[-1] // len(indices)
+        start = frame * context
+        end = (frame + 1) * context
+        frame = torch.FloatTensor([frame])
+        return tensor[:, :, start:end], frame
+
+# TODO: add tests
+# TODO: debug, maybe plot predictions
+def neural_onsets(audio_path, model_path, dsp: DSP = None, ml: ML = None, device: torch.device = None, units='seconds'):
     """Inference for the learned neural network model.
 
     Parameters
@@ -97,13 +137,40 @@ def neural_onsets(audio_path, model_path, dsp: DSP):
     Returns
     -------
     np.ndarray
-        The selected time-domain onsets in seconds.
+        The selected time-domain onsets with the selected units.
 
     """
-    model = torch.load(model_path)
-    (spectrogram, indices), targets = extract_features(audio_path, dsp)
-    predictions = model((spectrogram, indices))
-    return get_onset_times(predictions, dsp.fs, dsp.stride)
+    if dsp is None:
+        dsp = DSP()
+    if ml is None:
+        ml = ML
+    if device is None:
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model = OnsetDetector(**ml.__dict__, device=device).to(device)
+    model.load_state_dict(torch.load(model_path))
+    tensor, indices = extract_features_for_inference(audio_path, dsp)
+    inference_dataset = Inference(tensor, indices)
+    loader = DataLoader(inference_dataset, batch_size=ml.batch_size, pin_memory=True)
+    output_tensors = []
+    with torch.no_grad():
+        for tensor, indices in loader:
+            tensor = tensor.to(device)
+            indices = indices.to(device)
+            predictions = model((tensor, indices))
+            output_tensors.append(torch.flatten(predictions))
+
+    predictions = torch.cat(output_tensors)
+
+    if units == 'samples':
+        onsets = get_onset_samples(predictions, dsp.stride)
+    elif units == 'seconds':
+        onsets = get_onset_times(predictions, dsp.fs, dsp.stride)
+    elif units == 'frames':
+        onsets = get_onset_frames(predictions)
+    else:
+        raise ValueError('Invalid unit type.')
+
+    return onsets, predictions
 
 def create_click_track(onset_times, input_sig=None):
     """Create a click track of the given onsets.
@@ -123,18 +190,23 @@ def create_click_track(onset_times, input_sig=None):
         The output click track signal.
 
     """
-    click, _ = lb.load('./baseline/click.wav')
+    click, _ = lb.load('./audio/click.wav')
     if input_sig is None:
         click_track = np.zeros(onset_times[-1] + click.size)
     else:
         click_track = input_sig
     for o in onset_times:
-        click_track[o:o+click[:, 0].size] += click[:click_track.size-o, 0]
+        click_track[o:o+click.size] += click[:click_track.size-o]
     return click_track
 
 def main():
-    onset_times = neural_onsets('./audio/pop_shuffle.wav', './model/trained_models/f_0.5245676577669902.pt', DSP())
-    print(onset_times)
+    dsp = DSP()
+    ml = ML()
+    onset_times, predictions = neural_onsets('./audio/pop_shuffle.wav',
+                                './model/trained_models/f_0.13303186715466744.pt', dsp=dsp, ml=ml, units='samples')
+    audio_sig, fs = lb.load('./audio/pop_shuffle.wav', sr=dsp.fs)
+    click_track = create_click_track(onset_times, input_sig=audio_sig)
+    write('./audio/pop_shuffle_onsets.wav', dsp.fs, click_track)
 
 if __name__ == '__main__':
     main()

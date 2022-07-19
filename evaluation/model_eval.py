@@ -14,8 +14,8 @@ from librosa import frames_to_time
 from librosa.util import peak_pick
 from mir_eval.onset import f_measure
 
-def evaluate(loader, model, dataset='test'):
-    """Return average fscore, precision, and recall across the given dataset."""
+def evaluate(loader, model, loss_fn, dataset='test'):
+    """Return average fscore, precision, recall, and loss across the given dataset."""
     print(f'evaluating the {dataset} set...')
 
     tolerance = loader.dataset.dataset.dsp.tolerance
@@ -32,6 +32,7 @@ def evaluate(loader, model, dataset='test'):
             indices = indices.to(model.device)
             targets = targets.to(model.device)
             predictions = model((spectrogram, indices))
+            loss = loss_fn(predictions, targets)
             f1, pr, re = evaluate_batch(predictions, targets, tolerance, fs, stride)
             fscore += f1
             precision += pr
@@ -45,7 +46,7 @@ def evaluate(loader, model, dataset='test'):
 
     model.train()
 
-    return fscore, precision, recall
+    return fscore, precision, recall, loss
 
 def evaluate_batch(predictions, targets, tolerance, fs, stride):
     """Return the average fscore, precision, and recall of all frames the batch.

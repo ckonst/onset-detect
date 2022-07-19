@@ -47,15 +47,15 @@ def train(train_data, validation_data, model, loss_fn, optimizer, ml):
             loss = loss_fn(predictions, targets)
             loss.backward()
             optimizer.step()
-        print(f'epoch {epoch} loss: {loss}')
+        print(f'epoch {epoch} training loss: {loss}')
 
-        if validate(validation_data, model, loss_fn, optimizer, ml):
+        if validate(validation_data, model, loss_fn, epoch, optimizer, ml):
             continue
         else:
             print(f'Patience Exceeded! ({model.patience} epochs with no f-score improvement). Stopping Early.')
             break
 
-def validate(validation_data, model, loss_fn, optimizer, ml) -> bool:
+def validate(validation_data, model, loss_fn, epoch, optimizer, ml) -> bool:
     """Validate the data to make sure the model is learning properly.
 
     If it is not learning (e.g. vanishing gradient or convergence)
@@ -80,7 +80,8 @@ def validate(validation_data, model, loss_fn, optimizer, ml) -> bool:
         Whether or not training should continue.
 
     """
-    fscore, precision, recall = evaluate(validation_data, model, dataset='dev')
+    fscore, precision, recall, loss = evaluate(validation_data, model, loss_fn, dataset='dev')
+    print(f'epoch {epoch} validation loss: {loss}')
 
     if fscore > model.hi_score:
         model.hi_score = fscore
@@ -95,6 +96,7 @@ def validate(validation_data, model, loss_fn, optimizer, ml) -> bool:
 
 def main():
     """Set the hyperparameters, load and split the data, and train the model."""
+
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     ml = ML()
     dsp = DSP()
@@ -102,9 +104,9 @@ def main():
     #(spec, ind), targ = dataset.__getitem__(0)
     #print(spec.shape, ind.shape, targ.shape)
     train_data, test_data, validation_data = dataset.split_train_test_dev(2)
-    train_loader = DataLoader(train_data, batch_size=ml.batch_size, pin_memory=True)
-    test_loader = DataLoader(test_data, batch_size=ml.batch_size, pin_memory=True)
-    validation_loader = DataLoader(validation_data, batch_size=ml.batch_size, pin_memory=True)
+    train_loader = DataLoader(train_data, batch_size=ml.batch_size, num_workers=ml.num_workers, pin_memory=True)
+    test_loader = DataLoader(test_data, batch_size=ml.batch_size, num_workers=ml.num_workers, pin_memory=True)
+    validation_loader = DataLoader(validation_data, batch_size=ml.batch_size, num_workers=ml.num_workers, pin_memory=True)
     model = OnsetDetector(**ml.__dict__, device=device).to(device)
     loss_fn = nn.BCEWithLogitsLoss()
     optimizer = optim.Adam(model.parameters(), lr=ml.learning_rate)
