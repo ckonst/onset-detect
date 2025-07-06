@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Aug 12 20:16:53 2021.
-
-@author: Christian Konstantinov
-"""
-
 import torch
 from torch import nn
 

@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Dec  9 02:40:34 2020.
-
-@author: Christian Konstantinov
-"""
-
 import numpy as np
 import librosa as lb
 import torch

@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Jun 14 15:57:44 2022
-
-@author: Christian Konstantinov
-"""
-
 import unittest
 
 from dataset.dataset import OnsetDataset

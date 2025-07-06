@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Jul 15 00:38:46 2021
-
-@author: Christian Konstantinov
-"""
-
 from abc import ABC
 from dataclasses import dataclass, asdict, replace
 import json

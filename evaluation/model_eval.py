@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Jun 14 14:12:17 2022.
-
-@author: Christian Konstantinov
-"""
-
 import numpy as np
 import torch
 

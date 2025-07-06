@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import librosa as lb
 import numpy as np
 import unittest

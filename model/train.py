@@ -1,5 +1,3 @@
-"""Training for onset_detect."""
-
 import torch
 
 from dataset.dataset import OnsetDataset

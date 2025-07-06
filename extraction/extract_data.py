@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Jan 13 18:42:32 2021
-
-@author: Christian Konstantinov
-"""
-
 import json
 import math
 import os

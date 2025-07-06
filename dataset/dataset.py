@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Jan 19 22:29:13 2021.
-
-@author: Christian Konstantinov
-"""
-
 import random
 import torch
 

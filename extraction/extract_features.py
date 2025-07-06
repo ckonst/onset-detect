@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Jan 14 14:35:39 2021.
-
-@author: Christian Konstantinov
-"""
-
 import json
 import librosa as lb
 import numpy as np
