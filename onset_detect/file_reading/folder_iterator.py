@@ -1,7 +1,9 @@
-from glob import glob
 import os
+from glob import glob
+from typing import Generator
 
-def iterate_folder(root: str) -> str:
+
+def subdir_names(root: str) -> Generator[str, None, None]:
     """Given a path to a directory, yield the name of each subdirectory.
 
     Parameters

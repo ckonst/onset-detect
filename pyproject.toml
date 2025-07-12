@@ -1,0 +1,31 @@
+[project]
+name = "onset-detect"
+version = "0.1.0"
+description = "A package for polyphonic music onset detection models for automatic rhythm game beatmap creation."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "librosa>=0.11.0",
+    "mir-eval>=0.6",
+    "pydub>=0.25.1",
+    "torch>=1.13.1",
+    "torchaudio>=0.9.0",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.12.3",
+]
+
+[tool.ruff]
+exclude = [".venv"]
+fix = true
+
+[tool.ruff.format]
+quote-style = "single"
+
+[tool.ruff.lint.flake8-quotes]
+docstring-quotes = "single"
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"

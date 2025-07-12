@@ -11,17 +11,18 @@ This package only uses the latter two datapoints for simplicity and use in proto
 
 ### Setup
 
-1. Requires torch, torchaudio, librosa, mir-eval and all their dependencies
+1. Setup ffmpeg/libav according to the [pydub setup guide](https://github.com/jiaaro/pydub?tab=readme-ov-file#getting-ffmpeg-set-up)
+2. Install uv, if you haven't already. In the root folder of the repo run:
 
-    - `pip install requirements.txt`
+    - `uv init`
 
 2. The data can be downloaded [here](https://www.dropbox.com/sh/sxbkcq7ulnmpdx1/AADaMk0guIlP87fsQIPemmSxa?dl=0)
-    - Put the `osu/` folder in `dataset/` and run `python -m extraction.extract_data`.
+    - Put the `osu/` folder in `dataset/` and run `uv run python -m onset_detect.extraction.extract_data`.
 
-    - This will create a similar folder structure under `dataset/extracted/`.
+    - This will create a similar folder structure under `onset_detect/dataset/extracted/`.
 
-3. Run `python -m extraction.extract_features` to extract log mel spectrograms from the mp3s
+3. Run `uv run python -m onset_detect.extraction.extract_features` to extract log mel spectrograms from the mp3s
     - Each folder now has tensors saved as .pt files
 
-4. Now you can run train the model with `python -m model.train`. 
-    - The best scoring models will be saved in `model/trained_models/`.
+4. Now you can run train the model with `uv run python -m onset_detect.model.train`. 
+    - The best scoring models will be saved in `onset_detect/model/trained_models/`.

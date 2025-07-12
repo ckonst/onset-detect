@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 
+
 class OnsetDetector(nn.Module):
     """Onset detection model for automatic rhythm game mapping."""
 
@@ -13,17 +14,22 @@ class OnsetDetector(nn.Module):
         self.conv = nn.Conv2d(1, 1, kernel_size=(3, 3), padding='same')
         self.bidirectional = True
         self.D = 2 if self.bidirectional else 1
-        self.lstm = nn.LSTM(input_size=self.input_size, hidden_size=self.hidden_size,
-                            num_layers=self.num_layers, batch_first=True,
-                            bidirectional=self.bidirectional, dropout=0.5)
-        self.fc1 = nn.Linear(self.sequence_length+1, self.hidden_size)
+        self.lstm = nn.LSTM(
+            input_size=self.input_size,
+            hidden_size=self.hidden_size,
+            num_layers=self.num_layers,
+            batch_first=True,
+            bidirectional=self.bidirectional,
+            dropout=0.5,
+        )
+        self.fc1 = nn.Linear(self.sequence_length + 1, self.hidden_size)
         self.fc2 = nn.Linear(self.hidden_size, self.hidden_size)
         self.fc3 = nn.Linear(self.hidden_size, self.sequence_length)
         self.dropout = nn.Dropout()
         self.sigmoid = nn.Sigmoid()
         self.maxpool = nn.MaxPool2d((2, 1))
         self.no_improve = 0
-        self.hi_score = 0.
+        self.hi_score = 0.0
 
     def forward(self, x):
         """Forward pass of the model."""
@@ -34,8 +40,12 @@ class OnsetDetector(nn.Module):
         x0 = x0.squeeze(1)
         x0 = torch.transpose(x0, 1, 2)
 
-        h0 = torch.zeros(self.num_layers * self.D, x0.size(0), self.hidden_size).to(self.device)
-        c0 = torch.zeros(self.num_layers * self.D, x0.size(0), self.hidden_size).to(self.device)
+        h0 = torch.zeros(self.num_layers * self.D, x0.size(0), self.hidden_size).to(
+            self.device
+        )
+        c0 = torch.zeros(self.num_layers * self.D, x0.size(0), self.hidden_size).to(
+            self.device
+        )
         x0, _ = self.lstm(x0, (h0, c0))
         x0 = self.dropout(x0)
         x0 = torch.transpose(x0, 1, 2)

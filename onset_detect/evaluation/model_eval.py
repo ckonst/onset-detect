@@ -1,15 +1,18 @@
-import numpy as np
-import torch
-
+import logging
 from typing import Tuple
 
+import numpy as np
+import torch
 from librosa import frames_to_time
 from librosa.util import peak_pick
 from mir_eval.onset import f_measure
 
+log = logging.getLogger(__name__)
+
+
 def evaluate(loader, model, loss_fn, dataset='test'):
     """Return average fscore, precision, recall, and loss across the given dataset."""
-    print(f'evaluating the {dataset} set...')
+    log.info(f'evaluating the {dataset} set...')
 
     tolerance = loader.dataset.dataset.dsp.tolerance
     fs = loader.dataset.dataset.dsp.fs
@@ -35,11 +38,12 @@ def evaluate(loader, model, loss_fn, dataset='test'):
     precision /= size
     recall /= size
 
-    print(f'F-score: {fscore}\nprecision: {precision}\nrecall: {recall}\n')
+    log.info(f'F-score: {fscore}\nprecision: {precision}\nrecall: {recall}\n')
 
     model.train()
 
     return fscore, precision, recall, loss
+
 
 def evaluate_batch(predictions, targets, tolerance, fs, stride):
     """Return the average fscore, precision, and recall of all frames the batch.
@@ -58,6 +62,7 @@ def evaluate_batch(predictions, targets, tolerance, fs, stride):
     recall /= predictions.shape[0]
     return fscore, precision, recall
 
+
 def evaluate_frame(predictions, targets, tolerance, fs, stride):
     """Evaluate the current frame using mir_eval's (Bipartite matching) method.
 
@@ -65,28 +70,61 @@ def evaluate_frame(predictions, targets, tolerance, fs, stride):
 
     """
     p = predictions.cpu().detach().numpy()
-    p = peak_pick(p, 7, 7, 7, 7, 0.5, 5)
-    p,= np.nonzero(p)
-    p = frames_to_time(p, fs, stride)
+    p = peak_pick(
+        p,
+        pre_max=7,
+        post_max=7,
+        pre_avg=7,
+        post_avg=7,
+        delta=0.5,
+        wait=5,
+    )
+    (p,) = np.nonzero(p)
+    p = frames_to_time(p, sr=fs, hop_length=stride)
 
     t = targets.cpu().detach().numpy()
-    t = peak_pick(t, 7, 7, 7, 7, 0.5, 5)
-    t,= np.nonzero(t)
-    t = frames_to_time(t, fs, stride)
+    t = peak_pick(
+        t,
+        pre_max=7,
+        post_max=7,
+        pre_avg=7,
+        post_avg=7,
+        delta=0.5,
+        wait=5,
+    )
+    (t,) = np.nonzero(t)
+    t = frames_to_time(t, sr=fs, hop_length=stride)
 
     return f_measure(t, p, tolerance)
+
 
 def evaluate_frame_naive(predictions, targets):
     """Naive evaluation without a tolerance window."""
     preds = predictions.cpu().detach().numpy()
-    pred_peaks = peak_pick(preds, 7, 7, 7, 7, 0.5, 5).astype(np.int32)
+    pred_peaks = peak_pick(
+        preds,
+        pre_max=7,
+        post_max=7,
+        pre_avg=7,
+        post_avg=7,
+        delta=0.5,
+        wait=5,
+    ).astype(np.int32)
     preds = np.zeros(predictions.shape[0])
-    np.put(preds, pred_peaks, 1.)
+    np.put(preds, pred_peaks, 1.0)
 
     targs = targets.cpu().detach().numpy()
-    targ_peaks = peak_pick(targs, 7, 7, 7, 7, 0.5, 5).astype(np.int32)
+    targ_peaks = peak_pick(
+        targs,
+        pre_max=7,
+        post_max=7,
+        pre_avg=7,
+        post_avg=7,
+        delta=0.5,
+        wait=5,
+    ).astype(np.int32)
     targs = np.zeros(targets.shape[0])
-    np.put(targs, targ_peaks, 1.)
+    np.put(targs, targ_peaks, 1.0)
 
     sum_ = targs + preds
     diff = targs - preds
@@ -97,6 +135,7 @@ def evaluate_frame_naive(predictions, targets):
 
     return fscore_precision_recall(tp, fp, fn)
 
+
 def fscore_precision_recall(tp: int, fp: int, fn: int) -> Tuple[float, float, float]:
     """Return fscore, precision, and recall."""
-    return tp / max(tp + 0.5*(fp + fn), 1), tp / max(tp + fp, 1), tp / max(tp + fn, 1)
+    return tp / max(tp + 0.5 * (fp + fn), 1), tp / max(tp + fp, 1), tp / max(tp + fn, 1)

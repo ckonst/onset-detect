@@ -1,12 +1,12 @@
 import unittest
 
-from dataset.dataset import OnsetDataset
-from model.hyperparameters import DSP, ML
-
 from torch.utils.data import Subset
 
-class TrainingTestCase(unittest.TestCase):
+from onset_detect.dataset.dataset import OnsetDataset
+from onset_detect.model.hyperparameters import DSP, ML
 
+
+class TrainingTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.ml = ML()
@@ -18,6 +18,7 @@ class TrainingTestCase(unittest.TestCase):
         assert type(train) is type(test) is type(dev) is Subset
         assert len(dev) != 0 and len(train) != 0 and len(test) != 0
         assert len(dev) < len(train) > len(test)
+
 
 if __name__ == '__main__':
     unittest.main()
