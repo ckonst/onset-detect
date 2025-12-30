@@ -1,6 +1,8 @@
 import librosa as lb
 import numpy as np
 import torch
+from matplotlib import pyplot as plt
+from numpy.typing import NDArray
 from scipy.io.wavfile import write
 from torch.utils.data import DataLoader, Dataset
 
@@ -9,7 +11,14 @@ from onset_detect.model.hyperparameters import DSP, ML
 from onset_detect.model.model import OnsetDetector
 
 
-def get_lmfs(fs, input_sig, W, stride, fmin=20.0, fmax=20000.0):
+def get_lmfs(
+    fs: float,
+    input_sig: NDArray,
+    W: int,
+    stride: int,
+    fmin: float = 20.0,
+    fmax: float = 20000.0,
+) -> NDArray:
     """Return the log mel frequency spectrogram."""
     input_sig = input_sig.astype(np.float32)
     mfs = lb.feature.melspectrogram(
@@ -19,8 +28,8 @@ def get_lmfs(fs, input_sig, W, stride, fmin=20.0, fmax=20000.0):
     return lmfs
 
 
-def superflux(fs, input_sig):
-    """Return a vector of onset times for input_sig."""
+def superflux(fs: float, input_sig: NDArray) -> NDArray:
+    """Return a vector of onset times for input_sig using the superflux method."""
     W = 1024
     stride = int(lb.time_to_samples(0.01, sr=fs))
     lag = 2
@@ -37,21 +46,60 @@ def superflux(fs, input_sig):
     return onset_sf
 
 
-def get_onset_frames(predictions: torch.Tensor):
-    """Return the selected peaks as STFT frame indices.
+def inos2(input_sig: np.ndarray, dsp: DSP, gamma: float = 95.5) -> torch.Tensor:
+    """Return an ODF from input_sig using the INOS² method."""
 
-    Parameters
-    ----------
-    predictions : torch.Tensor
-        The predicted ODF.
+    stft = lb.stft(input_sig, n_fft=dsp.W, hop_length=dsp.stride)
+    magnitude = np.abs(stft)
+    log_magnitude = np.log(magnitude + 1e-10)[
+        1:-1, :
+    ]  # remove DC and Nyquist components
 
-    Returns
-    -------
-    p : np.ndarray
-        The selected peaks as STFT frame indices.
+    # number bins to keep based on gamma percentile of lowest magnitudes
+    num_bins = np.floor((gamma / 100) * log_magnitude.shape[0]).astype(int)
+    # sort each frequency bin's magnitudes and keep the lowest energy bins
+    low_energy_bins = np.sort(log_magnitude, axis=0)[:num_bins, :]
 
-    """
-    p = predictions.cpu().detach().numpy()
+    l2_norm_squared = np.linalg.norm(low_energy_bins, ord=2, axis=0) ** 2
+    l4_norm = np.linalg.norm(low_energy_bins, ord=4, axis=0)
+
+    inos2_odf = l2_norm_squared / l4_norm
+    inos2_odf /= np.max(inos2_odf)  # normalize
+
+    return inos2_odf
+
+
+def ninos2(input_sig: np.ndarray, dsp: DSP, gamma: float = 95.5) -> torch.Tensor:
+    """Return an ODF from input_sig using the NINOS² method."""
+
+    stft = lb.stft(input_sig, n_fft=dsp.W, hop_length=dsp.stride)
+    magnitude = np.abs(stft)
+    log_magnitude = np.log(magnitude + 1e-10)[
+        1:-1, :
+    ]  # remove DC and Nyquist components
+
+    # number bins to keep based on gamma percentile of lowest magnitudes
+    num_bins = np.floor((gamma / 100) * log_magnitude.shape[0]).astype(int)
+    # sort each frequency bin's magnitudes and keep the lowest energy bins
+    low_energy_bins = np.sort(log_magnitude, axis=0)[:num_bins, :]
+
+    l2_norm = np.linalg.norm(low_energy_bins, ord=2, axis=0)
+    l4_norm = np.linalg.norm(low_energy_bins, ord=4, axis=0)
+    sparsity_factor_denominator = num_bins ** (1 / 4.0) - 1  # L4 norm exponent
+
+    ninos2_odf = (l2_norm / sparsity_factor_denominator) * (l2_norm / l4_norm - 1)
+    ninos2_odf /= np.max(ninos2_odf)  # normalize
+
+    return ninos2_odf
+
+
+def get_onset_frames(predictions: torch.Tensor | NDArray) -> NDArray:
+    """Return the selected peaks as STFT frame indices."""
+    p = (
+        predictions.cpu().detach().numpy()
+        if isinstance(predictions, torch.Tensor)
+        else predictions
+    )
     p = lb.util.peak_pick(
         p, pre_max=3, post_max=3, pre_avg=3, post_avg=5, delta=0.5, wait=10
     )
@@ -59,45 +107,17 @@ def get_onset_frames(predictions: torch.Tensor):
     return p
 
 
-def get_onset_samples(predictions: torch.Tensor, stride: int) -> np.ndarray:
-    """Return the time-domain onsets as a numpy array.
-
-    Parameters
-    ----------
-    predictions : torch.Tensor
-        The predicted ODF.
-    stride : int
-        The stride for the STFT.
-
-    Returns
-    -------
-    p : np.ndarray
-        The selected time-domain onsets in samples.
-
-    """
+def get_onset_samples(predictions: torch.Tensor | NDArray, stride: int) -> NDArray:
+    """Return the time-domain onsets as a numpy array."""
     p = get_onset_frames(predictions)
     p = lb.frames_to_samples(p, hop_length=stride)
     return p
 
 
-def get_onset_times(predictions: torch.Tensor, fs: int, stride: int) -> np.ndarray:
-    """Return the time-domain onsets as a numpy array.
-
-    Parameters
-    ----------
-    predictions : torch.Tensor
-        The predicted ODF.
-    fs : int
-        The sample rate.
-    stride : int
-        The stride for the STFT.
-
-    Returns
-    -------
-    p : np.ndarray
-        The selected time-domain onsets in seconds.
-
-    """
+def get_onset_times(
+    predictions: torch.Tensor | NDArray, fs: int, stride: int
+) -> NDArray:
+    """Return the time-domain onsets as a numpy array."""
     p = get_onset_frames(predictions)
     p = lb.frames_to_time(p, sr=fs, hop_length=stride)
     return p
@@ -127,30 +147,15 @@ class Inference(Dataset):
 
 
 def neural_onsets(
-    audio_path,
-    model_path,
+    audio_path: str,
+    model_path: str,
     dsp: DSP = None,
     ml: ML = None,
     device: torch.device = None,
     units='seconds',
-):
-    """Inference for the learned neural network model.
+) -> tuple[NDArray, torch.Tensor]:
+    """Inference for the learned neural network model."""
 
-    Parameters
-    ----------
-    audio_path : str
-        The path to the audio file.
-    model_path : str
-        The path to the neural network model.
-    dsp : DSP
-        DSP hyperparameters.
-
-    Returns
-    -------
-    np.ndarray
-        The selected time-domain onsets with the selected units.
-
-    """
     if dsp is None:
         dsp = DSP()
     if ml is None:
@@ -184,24 +189,10 @@ def neural_onsets(
     return onsets, predictions
 
 
-def create_click_track(onset_times, input_sig=None):
-    """Create a click track of the given onsets.
-
-    If input_sig is provided the click track will be added to the signal.
-
-    Parameters
-    ----------
-    onset_times : np.ndarray
-        The time-domain onsets in seconds.
-    input_sig : np.ndarray, optional
-        The audio for perceptual evaluation. The default is None.
-
-    Returns
-    -------
-    click_track : np.ndarray
-        The output click track signal.
-
-    """
+def create_click_track(
+    onset_times: NDArray, input_sig: NDArray | None = None
+) -> NDArray:
+    """Create a click track of the given onsets. If input_sig is provided the click track will be added to the signal."""
     click, _ = lb.load('./audio/click.wav')
     if input_sig is None:
         click_track = np.zeros(onset_times[-1] + click.size)
@@ -212,18 +203,42 @@ def create_click_track(onset_times, input_sig=None):
     return click_track
 
 
-def main():
-    dsp = DSP()
-    ml = ML()
-    onset_times, predictions = neural_onsets(
-        './audio/pop_shuffle.wav',
-        './onset_detect/model/trained_models/f_0.13303186715466744.pt',
-        dsp=dsp,
-        ml=ml,
-        units='samples',
+def main() -> None:
+    dsp = DSP(fs=44100)
+    # ml = ML()
+    # onset_times, predictions = neural_onsets(
+    #     './audio/pop_shuffle.wav',
+    #     './onset_detect/model/trained_models/f_0.13303186715466744.pt',
+    #     dsp=dsp,
+    #     ml=ml,
+    #     units='samples',
+    # )
+    audio_sig, _ = lb.load('./audio/pop_shuffle.wav', sr=dsp.fs)
+    audio_sig /= np.max(np.abs(audio_sig))
+
+    ninos2_odf = ninos2(audio_sig, dsp, gamma=50)
+
+    ninos2_onsets = lb.frames_to_samples(
+        lb.onset.onset_detect(
+            onset_envelope=ninos2_odf,
+            sr=dsp.fs,
+            hop_length=dsp.stride,
+            units='frames',
+        ),
+        hop_length=dsp.stride,
     )
-    audio_sig, fs = lb.load('./audio/pop_shuffle.wav', sr=dsp.fs)
-    click_track = create_click_track(onset_times, input_sig=audio_sig)
+
+    fig, ax = plt.subplots()
+    ax.set_title('NINOS² Onsets')
+    ax.vlines(ninos2_onsets, 0, 1, label='Onsets')
+    plt.show()
+
+    fig, ax = plt.subplots()
+    ax.set_title('NINOS² Onset Detection Function')
+    ax.plot(ninos2_odf, label='NINOS² ODF')
+    plt.show()
+
+    click_track = create_click_track(ninos2_onsets, input_sig=audio_sig)
     write('./audio/pop_shuffle_onsets.wav', dsp.fs, click_track)
 
 
