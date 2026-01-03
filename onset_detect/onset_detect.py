@@ -3,6 +3,7 @@ import numpy as np
 import torch
 from matplotlib import pyplot as plt
 from numpy.typing import NDArray
+from scipy import signal
 from scipy.io.wavfile import write
 from torch.utils.data import DataLoader, Dataset
 
@@ -46,7 +47,7 @@ def superflux(fs: float, input_sig: NDArray) -> NDArray:
     return onset_sf
 
 
-def inos2(input_sig: np.ndarray, dsp: DSP, gamma: float = 95.5) -> torch.Tensor:
+def inos2(input_sig: np.ndarray, dsp: DSP, gamma: float = 95.5) -> NDArray:
     """Return an ODF from input_sig using the INOS² method."""
 
     stft = lb.stft(input_sig, n_fft=dsp.W, hop_length=dsp.stride)
@@ -69,7 +70,7 @@ def inos2(input_sig: np.ndarray, dsp: DSP, gamma: float = 95.5) -> torch.Tensor:
     return inos2_odf
 
 
-def ninos2(input_sig: np.ndarray, dsp: DSP, gamma: float = 95.5) -> torch.Tensor:
+def ninos2(input_sig: np.ndarray, dsp: DSP, gamma: float = 95.5) -> NDArray:
     """Return an ODF from input_sig using the NINOS² method."""
 
     stft = lb.stft(input_sig, n_fft=dsp.W, hop_length=dsp.stride)
@@ -142,10 +143,6 @@ class Inference(Dataset):
         return tensor[:, :, start:end], frame
 
 
-# TODO: add tests
-# TODO: debug, maybe plot predictions
-
-
 def neural_onsets(
     audio_path: str,
     model_path: str,
@@ -199,33 +196,33 @@ def create_click_track(
     else:
         click_track = input_sig
     for o in onset_times:
+        if o + click.size >= click_track.size:
+            continue
         click_track[o : o + click.size] += click[: click_track.size - o]
     return click_track
 
 
 def main() -> None:
     dsp = DSP(fs=44100)
-    # ml = ML()
-    # onset_times, predictions = neural_onsets(
-    #     './audio/pop_shuffle.wav',
-    #     './onset_detect/model/trained_models/f_0.13303186715466744.pt',
-    #     dsp=dsp,
-    #     ml=ml,
-    #     units='samples',
-    # )
+    ml = ML()
+    onset_times, predictions = neural_onsets(
+        './audio/pop_shuffle.wav',
+        './onset_detect/model/trained_models/f_0.13303186715466744.pt',
+        dsp=dsp,
+        ml=ml,
+        units='samples',
+    )
     audio_sig, _ = lb.load('./audio/pop_shuffle.wav', sr=dsp.fs)
     audio_sig /= np.max(np.abs(audio_sig))
 
-    ninos2_odf = ninos2(audio_sig, dsp, gamma=50)
+    ninos2_odf = ninos2(audio_sig, dsp, gamma=95.5)
 
+    interval = 0.0025 * dsp.fs
+    threshold = 0.3
     ninos2_onsets = lb.frames_to_samples(
-        lb.onset.onset_detect(
-            onset_envelope=ninos2_odf,
-            sr=dsp.fs,
-            hop_length=dsp.stride,
-            units='frames',
-        ),
+        signal.find_peaks(ninos2_odf, height=threshold, distance=interval)[0],
         hop_length=dsp.stride,
+        n_fft=dsp.W,
     )
 
     fig, ax = plt.subplots()
@@ -238,7 +235,17 @@ def main() -> None:
     ax.plot(ninos2_odf, label='NINOS² ODF')
     plt.show()
 
-    click_track = create_click_track(ninos2_onsets, input_sig=audio_sig)
+    fig, ax = plt.subplots()
+    ax.set_title('Neural Onsets')
+    ax.vlines(onset_times, 0, 1, label='Onsets')
+    plt.show()
+
+    fig, ax = plt.subplots()
+    ax.set_title('Neural Onset Detection Function')
+    ax.plot(predictions.cpu(), label='Neural ODF')
+    plt.show()
+
+    click_track = create_click_track(onset_times, input_sig=audio_sig)
     write('./audio/pop_shuffle_onsets.wav', dsp.fs, click_track)
 
 

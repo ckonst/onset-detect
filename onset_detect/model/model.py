@@ -66,4 +66,4 @@ class OnsetDetector(nn.Module):
         x = self.dropout(x)
         x = self.fc3(x)
         x = self.dropout(x)
-        return x
+        return self.sigmoid(x)
